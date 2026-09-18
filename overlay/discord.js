@@ -23,12 +23,9 @@
     'PROCESS-NAME,com.discord,Discord',
   ];
 
-  const discordIcon =
-    'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Discord.png';
+  const discordIcon = 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Discord.png';
 
-  const existingIndex = serviceConfigs.findIndex(
-    (service) => service.name === 'Discord',
-  );
+  const existingIndex = serviceConfigs.findIndex((service) => service.name === 'Discord');
 
   let discordService;
 
@@ -41,20 +38,14 @@
     };
   }
 
-  discordService.baseOption =
-    discordService.baseOption || selectBaseOption;
+  discordService.baseOption = discordService.baseOption || selectBaseOption;
 
   discordService.providers = {
     ...(discordService.providers || {}),
     discord: discordProvider,
   };
 
-  discordService.rules = [
-    ...new Set([
-      ...discordRules,
-      ...(discordService.rules || []),
-    ]),
-  ];
+  discordService.rules = [...new Set([...discordRules, ...(discordService.rules || [])])];
 
   discordService.icon = discordService.icon || discordIcon;
 
