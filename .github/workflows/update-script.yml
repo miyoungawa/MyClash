@@ -1,0 +1,54 @@
+name: Build Script.js with Discord
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    # 每 6 小时检查一次，使用 UTC 时间
+    - cron: '17 */6 * * *'
+
+  push:
+    branches:
+      - main
+    paths:
+      - 'overlay/discord.js'
+      - 'tools/build.mjs'
+      - '.github/workflows/update-script.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: myclash-discord-builder
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout personal repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Download, merge and verify
+        run: node tools/build.mjs
+
+      - name: Commit generated Script.js
+        shell: bash
+        run: |
+          if [ -z "$(git status --porcelain -- dist/Script.js)" ]; then
+            echo "Upstream Script.js has not changed."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add dist/Script.js
+          git commit -m "chore: update generated Script.js"
+          git push
