@@ -51,7 +51,7 @@
 - [Script.js（精简版）](/Script/Script.js)，仅包含少量分流策略组，复制下面这个链接使用👇👇👇
 
 ```txt
-https://raw.githubusercontent.com/AIsouler/MyClash/main/Script/Script.js
+https://raw.githubusercontent.com/miyoungawa/MyClash/main/Script/Script.js
 ```
 
 |                                                                                   |
@@ -69,20 +69,6 @@ https://raw.githubusercontent.com/AIsouler/MyClash/main/Script/Script.js
 - 使用私有 DNS 或 hosts 节点域名映射的机场需要手动写入配置中
 - 未匹配地区的策略组将回退至 REJECT
 
-### 使用方法（配置）
-
-复制以下任意一个链接或者复制完整代码后导入代理客户端
-
-- [mihomoConfig.yaml（全量版）](/Config/mihomoConfig.yaml)，复制下面这个链接使用👇👇👇
-
-```txt
-https://raw.githubusercontent.com/AIsouler/MyClash/main/Config/mihomoConfig.yaml
-```
-
-- [mihomoConfigLite.yaml（精简版）](/Config/mihomoConfigLite.yaml)，仅包含少量分流策略组，复制下面这个链接使用👇👇👇
-
-```txt
-https://raw.githubusercontent.com/AIsouler/MyClash/main/Config/mihomoConfigLite.yaml
 ```
 
 ## 功能说明
