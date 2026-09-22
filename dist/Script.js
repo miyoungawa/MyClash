@@ -353,7 +353,7 @@ const serviceConfigs = [
         'path-in-bundle': 'geo/geosite/category-ai-!cn.mrs',
       },
     },
-    icon: `${iconBaseUrl}ChatGPT.svg`,
+    icon: `${iconBaseUrl}OpenAI.svg`,
     rules: ['RULE-SET,ai,AI'],
   },
   {
