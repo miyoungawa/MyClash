@@ -1193,6 +1193,7 @@ function buildDnsAndHostsConfig(config, filteredProxies) {
     ...(Object.keys(proxyServerPolicy).length > 0 && {
       'proxy-server-nameserver-policy': proxyServerPolicy,
     }),
+    nameserver: foreignDNS,
     'nameserver-policy': {
       'rule-set:private': 'system',
       'rule-set:douyin': ['system', '180.184.1.1', '180.184.2.2'],
