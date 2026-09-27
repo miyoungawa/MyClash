@@ -51,7 +51,7 @@
 - [Script.js（精简版）](/Script/Script.js)，仅包含少量分流策略组，复制下面这个链接使用👇👇👇
 
 ```txt
-https://raw.githubusercontent.com/miyoungawa/MyClash/main/Script/Script.js
+https://raw.githubusercontent.com/miyoungawa/MyClash/main/dist/Script.js
 ```
 
 |                                                                                   |
