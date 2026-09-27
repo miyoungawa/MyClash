@@ -1,8 +1,9 @@
+
 # MyClash
 
 基于 [mihomo](https://github.com/MetaCubeX/mihomo/tree/Alpha) 的配置与覆写脚本，提供全量版和精简版。
 
-本仓库 fork 自 [AIsouler/MyClash](https://github.com/AIsouler/MyClash)，保留上游的脚本与配置文件，并在其上追加 **Discord 分流支持**、**自动化构建**与**测试套件**。上游文件保持原样，改动集中在 `overlay/`、`tools/`、`Test/`、`.github/`，以及自动生成的 `dist/Script.js`。
+本仓库 fork 自 [AIsouler/MyClash](https://github.com/AIsouler/MyClash)，其实原因是想和自己的女朋友sakiki打Discord电话，而原本的MyClash并没有Discord的分流功能，所以在其上追加 **Discord 分流支持**、**自动化构建**与**测试套件**。上游文件保持原样，改动集中在 `overlay/`、`tools/`、`Test/`、`.github/`，以及自动生成的 `dist/Script.js`。
 
 主要特性：
 
@@ -22,16 +23,16 @@
 
 ## 目录结构
 
-| 路径                                                                        | 说明                                                                     |
-| --------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `dist/Script.js`                                                            | **本仓库发布的覆写脚本**：上游最新精简版 + Discord 补丁，由 CI 定时构建  |
-| `Script/Script.js`                                                          | 上游精简版脚本快照                                                       |
-| `Script/mihomoScript.js`                                                    | 上游全量版脚本快照                                                       |
-| `Config/mihomoConfigLite.yaml`<br>`Config/mihomoConfig.yaml`                | 上游配置文件快照（provider 式，独立使用，**不能**挂覆写脚本，见下文）     |
-| `overlay/discord.js`                                                        | Discord 分流补丁，构建时追加到上游脚本末尾                               |
-| `tools/build.mjs`                                                           | 构建脚本：下载上游脚本 → 追加补丁 → 沙箱自检 → 写出 `dist/Script.js`     |
-| `Test/`                                                                     | 覆写脚本测试套件（单元 / 集成 / ES2020 兼容性 / QuickJS 引擎验证）        |
-| `.github/workflows/`                                                        | 定时构建与格式检查                                                       |
+| 路径                                                     | 说明                                                                          |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `dist/Script.js`                                       | **本仓库发布的覆写脚本**：上游最新精简版 + Discord 补丁，由 CI 定时构建 |
+| `Script/Script.js`                                     | 上游精简版脚本快照                                                            |
+| `Script/mihomoScript.js`                               | 上游全量版脚本快照                                                            |
+| `Config/mihomoConfigLite.yamlConfig/mihomoConfig.yaml` | 上游配置文件快照（provider 式，独立使用，**不能**挂覆写脚本，见下文）   |
+| `overlay/discord.js`                                   | Discord 分流补丁，构建时追加到上游脚本末尾                                    |
+| `tools/build.mjs`                                      | 构建脚本：下载上游脚本 → 追加补丁 → 沙箱自检 → 写出`dist/Script.js`      |
+| `Test/`                                                | 覆写脚本测试套件（单元 / 集成 / ES2020 兼容性 / QuickJS 引擎验证）            |
+| `.github/workflows/`                                   | 定时构建与格式检查                                                            |
 
 > `Script/`、`Config/` 是上游某一时点的快照，可能滞后于上游仓库；`dist/Script.js` 每次构建都基于上游的最新版本生成。两者内容不一致时，**以 `dist/Script.js` 为准**。
 
@@ -42,7 +43,6 @@
 ### 注意事项
 
 > [!IMPORTANT]
->
 > ⚠️该脚本仅用于覆写机场提供的配置文件，请勿用于覆写自行编写的配置
 >
 > ⚠️输入配置中的节点必须是**内联的 `proxies:` 列表**。若配置里含有 `proxy-providers`，脚本会直接中断并报错：
@@ -80,22 +80,22 @@
 
 脚本顶部 `ruleOptionsEnable` 中的开关（以本仓库发布的 `dist/Script.js` 为准；脚本跟随上游更新，可能新增开关，例如 `极简模式` 即为较新版本引入）：
 
-| 开关                                       | 默认  | 说明                                                          |
-| ------------------------------------------ | ----- | ------------------------------------------------------------- |
-| `手动选择`                                 | true  | 生成「手动选择」策略组（含全部节点）                          |
-| `自动选择`                                 | true  | 生成「自动选择」url-test 策略组                               |
-| `Google` `AI` `Telegram` `Steam` `AdBlock` | true  | 精简版内置的 5 个分流策略组                                   |
-| `极简模式`                                 | false | 只生成「默认代理 / 直连 / GLOBAL」，`MATCH` 直接走「默认代理」 |
-| `生成地区自动选择组`                       | true  | 每个地区组内附带一个 `<地区>-自动选择` url-test 组            |
-| `隐藏地区手动选择组`                       | false | 隐藏地区手动选择组（同时影响「直连」组）                      |
-| `生成倍率组`                               | true  | 生成低倍率 / 高倍率策略组                                     |
-| `分流组添加所有节点`                       | false | 把全部节点直接加入各分流策略组                                |
-| `过滤低倍率节点`                           | false | 剔除低倍率节点                                                |
-| `过滤高倍率节点`                           | false | 剔除高倍率节点                                                |
-| `过滤非地区节点`                           | true  | 剔除匹配不到地区、且命中信息节点关键词的节点                  |
-| `屏蔽国外QUIC`                             | true  | UDP 443 且目标非国内地址一律 REJECT，防止 QUIC 绕过代理       |
-| `代理IPV4优先` / `代理IPV6优先`            | false | 统一节点 IP 版本，两者同时开启时不生效                        |
-| `链式代理`                                 | false | 需配合自定义节点使用，未配置自定义节点时会直接报错            |
+| 开关                                                 | 默认  | 说明                                                             |
+| ---------------------------------------------------- | ----- | ---------------------------------------------------------------- |
+| `手动选择`                                         | true  | 生成「手动选择」策略组（含全部节点）                             |
+| `自动选择`                                         | true  | 生成「自动选择」url-test 策略组                                  |
+| `Google` `AI` `Telegram` `Steam` `AdBlock` | true  | 精简版内置的 5 个分流策略组                                      |
+| `极简模式`                                         | false | 只生成「默认代理 / 直连 / GLOBAL」，`MATCH` 直接走「默认代理」 |
+| `生成地区自动选择组`                               | true  | 每个地区组内附带一个`<地区>-自动选择` url-test 组              |
+| `隐藏地区手动选择组`                               | false | 隐藏地区手动选择组（同时影响「直连」组）                         |
+| `生成倍率组`                                       | true  | 生成低倍率 / 高倍率策略组                                        |
+| `分流组添加所有节点`                               | false | 把全部节点直接加入各分流策略组                                   |
+| `过滤低倍率节点`                                   | false | 剔除低倍率节点                                                   |
+| `过滤高倍率节点`                                   | false | 剔除高倍率节点                                                   |
+| `过滤非地区节点`                                   | true  | 剔除匹配不到地区、且命中信息节点关键词的节点                     |
+| `屏蔽国外QUIC`                                     | true  | UDP 443 且目标非国内地址一律 REJECT，防止 QUIC 绕过代理          |
+| `代理IPV4优先` / `代理IPV6优先`                  | false | 统一节点 IP 版本，两者同时开启时不生效                           |
+| `链式代理`                                         | false | 需配合自定义节点使用，未配置自定义节点时会直接报错               |
 
 全量版另有 `负载均衡`、`FCM`、`YouTube`、`Microsoft`、`Apple`、`TikTok`、`Twitter`、`Meta`、`Line`、`Netflix`、`Emby`、`PikPak`、`Spotify`、`Crypto`、`EHentai` 等开关。
 
@@ -115,9 +115,9 @@ https://raw.githubusercontent.com/miyoungawa/MyClash/main/dist/Script.js
 https://raw.githubusercontent.com/miyoungawa/MyClash/main/Script/mihomoScript.js
 ```
 
-|                                                         |
-| ------------------------------------------------------- |
-| ![img](./Image/import.webp)                             |
+|                             |
+| --------------------------- |
+| ![img](./Image/import.webp) |
 
 ### 处理流程
 
@@ -134,13 +134,13 @@ https://raw.githubusercontent.com/miyoungawa/MyClash/main/Script/mihomoScript.js
 
 脚本**不继承订阅的 DNS**，而是重写整套 DNS（这也是要求关闭客户端 DNS 覆写的原因：DNS 配置与路由规则是配套设计的）：
 
-| 字段                        | 取值                                            | 作用                                          |
-| --------------------------- | ----------------------------------------------- | --------------------------------------------- |
-| `default-nameserver`        | `114.114.114.114`、`tls://223.5.5.5`、`1.12.12.12` | 引导用，解析下面那些 DoH 服务器域名本身       |
-| `proxy-server-nameserver`   | `114.114.114.114`、`tls://223.5.5.5`、`doh.pub` | 解析节点 `server` 域名                        |
-| `nameserver`                | Cloudflare / Google DoH，均带 `#默认代理`       | 默认解析器，查询经代理，避免 DNS 泄露         |
-| `nameserver-policy`         | `rule-set:cn` → 国内 DNS（`#DIRECT`）           | 国内域名走国内解析                            |
-| `direct-nameserver`         | 国内 DNS                                        | 直连出口的解析                                |
+| 字段                        | 取值                                                     | 作用                                    |
+| --------------------------- | -------------------------------------------------------- | --------------------------------------- |
+| `default-nameserver`      | `114.114.114.114`、`tls://223.5.5.5`、`1.12.12.12` | 引导用，解析下面那些 DoH 服务器域名本身 |
+| `proxy-server-nameserver` | `114.114.114.114`、`tls://223.5.5.5`、`doh.pub`    | 解析节点`server` 域名                 |
+| `nameserver`              | Cloudflare / Google DoH，均带`#默认代理`               | 默认解析器，查询经代理，避免 DNS 泄露   |
+| `nameserver-policy`       | `rule-set:cn` → 国内 DNS（`#DIRECT`）               | 国内域名走国内解析                      |
+| `direct-nameserver`       | 国内 DNS                                                 | 直连出口的解析                          |
 
 此外固定开启 fake-ip（`198.18.0.1/15`、`2001:2::1/48`）、`cache-algorithm: arc`、`use-hosts`，并把 `rule-set:private`、`rule-set:fakeip_filter`、`rule-set:geolocation-cn` 加入 `fake-ip-filter`。
 
@@ -239,17 +239,11 @@ https://raw.githubusercontent.com/miyoungawa/MyClash/main/Script/mihomoScript.js
 ## 功能说明
 
 - 仅适用于使用 [mihomo 内核](https://github.com/MetaCubeX/mihomo/tree/Alpha) 的代理客户端
-
 - 全量版和精简版仅有分流策略组数量差异，其他基本一致，若不需要很多分流策略组，可使用精简版
-
 - 内置的DNS配置已解决DNS泄露问题（在 Windows 上需要关闭系统的智能多宿主解析功能或在代理软件中开启 [严格路由](https://wiki.metacubex.one/config/inbound/tun/#strict-route)），DNS配置和路由规则是配套的，建议不要开启代理软件的DNS覆写或随意修改
-
 - 规则采用 `rule-set` 模式，按需添加规则集，告别臃肿的 geodata，减少内存占用
-
 - 规则以 `domain` 与 `ipcidr` 行为为主，相比 `classical` 查询效率更高
-
 - 脚本会覆盖以下内核参数：`mixed-port: 7890`、`allow-lan: true`、`find-process-mode: strict`、`external-controller: 127.0.0.1:9090`（面板为 zashboard）、TUN 使用 `mips` 栈并开启 `strict-route`/`auto-redirect`、NTP 使用阿里云。订阅中对应的字段会被替换
-
 - 脚本保持 ES2020 语法兼容：Bettbox 等客户端内置 QuickJS 引擎，超出该版本语法会导致脚本加载失败（这也是仓库内测试套件包含 ES2020 与 QuickJS 校验的原因）
 
 ---
@@ -309,8 +303,8 @@ npm --prefix Test install
 
 - 客户端： [Bettbox](https://github.com/appshubcc/Bettbox)
 
-|                        |                        |                        |                        |
-| ---------------------- | ---------------------- | ---------------------- | ---------------------- |
+|                            |                            |                            |                            |
+| -------------------------- | -------------------------- | -------------------------- | -------------------------- |
 | ![img](./Image/IMG_1.webp) | ![img](./Image/IMG_2.webp) | ![img](./Image/IMG_3.webp) | ![img](./Image/IMG_4.webp) |
 | ![img](./Image/IMG_5.webp) | ![img](./Image/IMG_6.webp) | ![img](./Image/IMG_7.webp) | ![img](./Image/IMG_8.webp) |
 
@@ -319,13 +313,9 @@ npm --prefix Test install
 本项目基于 [AIsouler/MyClash](https://github.com/AIsouler/MyClash)，感谢原作者及以下项目与所有上游项目
 
 - [dahaha-365/YaNet](https://github.com/dahaha-365/YaNet/blob/main/Mihomo/global_script.js)
-
 - [YiXuanZX/rules](https://github.com/YiXuanZX/rules)
-
 - [appshubcc/bett-rules](https://github.com/appshubcc/bett-rules)
-
 - [217heidai/adblockfilters](https://github.com/217heidai/adblockfilters)
-
 - [Koolson/Qure](https://github.com/Koolson/Qure)
 
 ## Star History
