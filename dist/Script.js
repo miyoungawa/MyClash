@@ -420,6 +420,12 @@ const serviceConfigs = [
   },
 ];
 
+/**
+ * 适配 Bettbox 策略组开关
+ * 声明哪些开关属于策略组：基础策略组 + 全部分流策略组。
+ */
+Compatible_With_Bettbox.policyGroupOptions = serviceConfigs.map((svc) => svc.name);
+
 // ---节点过滤、重命名及验证---
 
 /**
