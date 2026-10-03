@@ -18,8 +18,10 @@ on:
 permissions:
   contents: write
 
+# 与 format_and_test 共用同一分组（myclash-refs/heads/main）：
+# 两者都会自动提交并推送，串行执行可避免并发 push 被判非快进而失败
 concurrency:
-  group: myclash-discord-builder
+  group: myclash-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -51,4 +53,7 @@ jobs:
 
           git add dist/Script.js
           git commit -m "chore: update generated Script.js"
+
+          # 若远端在此期间有新提交，先变基再推送
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
           git push

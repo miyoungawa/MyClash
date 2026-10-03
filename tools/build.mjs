@@ -9,7 +9,11 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const upstreamUrl =
   'https://raw.githubusercontent.com/AIsouler/MyClash/main/Script/Script.js';
 
-const overlayPaths = [resolve(root, 'overlay', 'discord.js'), resolve(root, 'overlay', 'onedrive.js')];
+const overlayPaths = [
+  resolve(root, 'overlay', 'discord.js'),
+  resolve(root, 'overlay', 'onedrive.js'),
+  resolve(root, 'overlay', 'regions.js'),
+];
 const outputPath = resolve(root, 'dist', 'Script.js');
 
 const response = await fetch(upstreamUrl, {
@@ -113,6 +117,14 @@ const sampleConfig = {
       uuid: '00000000-0000-0000-0000-000000000000',
       alterId: 0,
     },
+    {
+      name: '台湾测试节点',
+      type: 'ss',
+      server: 'tw.example.com',
+      port: 443,
+      cipher: 'aes-256-gcm',
+      password: 'test',
+    },
   ],
 };
 
@@ -208,6 +220,28 @@ assert(
     rules.indexOf('RULE-SET,onedrive,OneDrive') <
       googleRuleIndex,
   'OneDrive 规则必须位于 Google 规则之前',
+);
+
+const taiwanGroup = groups.find((group) => group.name === '台湾省');
+
+assert(taiwanGroup, '没有生成台湾省策略组');
+assert(
+  taiwanGroup.proxies.some((name) => name.includes('台湾测试节点')),
+  '台湾省策略组中没有台湾节点',
+);
+assert(
+  groups.some((group) => group.name === '台湾省-自动选择'),
+  '没有生成台湾省-自动选择策略组',
+);
+
+const otherGroup = groups.find((group) => group.name === '其他节点');
+
+assert(
+  !otherGroup ||
+    !otherGroup.proxies.some((name) =>
+      name.includes('台湾测试节点'),
+    ),
+  '台湾节点同时被归入「其他节点」，说明地区表未同步写入两个数组',
 );
 
 const missingProviders = rules

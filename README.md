@@ -25,11 +25,11 @@
 
 | 路径                                                     | 说明                                                                          |
 | -------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `dist/Script.js`                                       | **本仓库发布的覆写脚本**：上游最新精简版 + Discord 补丁，由 CI 定时构建 |
+| `dist/Script.js`                                       | **本仓库发布的覆写脚本**：上游最新精简版 + 本仓库补丁（Discord / OneDrive / 额外地区），由 CI 定时构建 |
 | `Script/Script.js`                                     | 上游精简版脚本快照                                                            |
 | `Script/mihomoScript.js`                               | 上游全量版脚本快照                                                            |
 | `Config/mihomoConfigLite.yaml` / `Config/mihomoConfig.yaml` | 上游配置文件快照（provider 式，独立使用，**不能**挂覆写脚本，见下文） |
-| `overlay/`                                                                  | 补丁目录：`discord.js`（Discord 分流）、`onedrive.js`（OneDrive 分流），构建时依次追加到上游脚本末尾 |
+| `overlay/`                                                                  | 补丁目录：`discord.js`（Discord 分流）、`onedrive.js`（OneDrive 分流）、`regions.js`（额外地区），构建时依次追加到上游脚本末尾 |
 | `tools/build.mjs`                                      | 构建脚本：下载上游脚本 → 追加补丁 → 沙箱自检 → 写出`dist/Script.js`      |
 | `Test/`                                                | 覆写脚本测试套件（单元 / 集成 / ES2020 兼容性 / QuickJS 引擎验证）            |
 | `.github/workflows/`                                   | 定时构建与格式检查                                                            |
@@ -199,6 +199,7 @@ https://raw.githubusercontent.com/miyoungawa/MyClash/main/Script/mihomoScript.js
 
 - `Discord` （由 `overlay/discord.js` 注入，仅 `dist/Script.js` 包含；补丁会把它插在基础策略组之后、Google 等宽泛规则之前，避免 Discord 附件域名被 Google 规则提前匹配）
 - `OneDrive` （由 `overlay/onedrive.js` 注入，仅 `dist/Script.js` 包含；默认走「默认代理」，同时提供「直连」选项。规则集覆盖 `onedrive.mrs`（1drv.ms / livefilestore.com / storage.live.com / onedrive.com 等）与 `sharepoint.mrs`（国际版 sharepoint.com / sharepointonline.com）；世纪互联版的 `sharepoint.cn` 等 `.cn` 域名仍由前缀规则 `microsoft_cn` 直连，不受影响）
+- 额外地区 `台湾省` （由 `overlay/regions.js` 注入，仅 `dist/Script.js` 包含。脚本内地区表分为 `regionDefinitions`（判定是否地区节点）与 `allRegionDefinitions`（节点匹配与建组）两个数组，新增地区必须同时写入两者，否则会出现「地区组生成了但节点同时落进其他节点」的问题，补丁已处理）
 
 **条件生成**
 
@@ -214,7 +215,7 @@ https://raw.githubusercontent.com/miyoungawa/MyClash/main/Script/mihomoScript.js
 - `日本`
 - `美国`
 - `新加坡`
-- `台湾省` （仅全量版）
+- `台湾省` （全量版已内置；精简版由 `overlay/regions.js` 补丁追加）
 - `低倍率节点`
 - `高倍率节点`
 - `其他节点`
@@ -257,8 +258,8 @@ https://raw.githubusercontent.com/miyoungawa/MyClash/main/Script/mihomoScript.js
 
 1. 下载上游精简版 `Script.js`（`AIsouler/MyClash` main 分支）
 2. 校验上游关键结构标记（`ruleOptionsEnable`、`baseGroups`、`serviceConfigs`、`function main`），结构变化则中止，不发布错误脚本
-3. 在脚本末尾依次追加 [overlay/](./overlay) 下的补丁（`discord.js`、`onedrive.js`）
-4. 在 Node `vm` 沙箱中实际执行一次 `main(示例配置)` 做断言：Discord / OneDrive 策略组与规则是否齐全、二者规则是否位于 Google 规则之前、所有 `RULE-SET` 引用是否有对应 provider、策略组名是否重复
+3. 在脚本末尾依次追加 [overlay/](./overlay) 下的补丁（`discord.js`、`onedrive.js`、`regions.js`）
+4. 在 Node `vm` 沙箱中实际执行一次 `main(示例配置)` 做断言：Discord / OneDrive 策略组与规则是否齐全、二者规则是否位于 Google 规则之前、台湾省地区组是否按预期生成且未被误归入「其他节点」、所有 `RULE-SET` 引用是否有对应 provider、策略组名是否重复
 5. 全部通过后才覆盖 `dist/Script.js`
 
 `.github/workflows/update-script.yml` 每 6 小时检查一次上游变化，也可手动触发；`overlay/`、`tools/`、workflow 自身有改动时会立即重建。
