@@ -420,6 +420,12 @@ const serviceConfigs = [
   },
 ];
 
+/**
+ * 适配 Bettbox 策略组开关
+ * 声明哪些开关属于策略组：基础策略组 + 全部分流策略组。
+ */
+Compatible_With_Bettbox.policyGroupOptions = serviceConfigs.map((svc) => svc.name);
+
 // ---节点过滤、重命名及验证---
 
 /**
@@ -703,7 +709,7 @@ function buildFunctionalGroups(filteredProxies, generatedRegionGroups, customize
 
   const { customProxyNames = [], customGroup = null } = customizeInfo || {};
   const filteredProxyNames = filteredProxies.map((p) => p.name);
-  const allProxiesNames = [...customProxyNames, ...filteredProxyNames];
+  const allProxiesNames = [...filteredProxyNames, ...customProxyNames];
   const groupNamesOfSelect = generatedRegionGroups.filter((g) => g.type === 'select').map((g) => g.name);
   const baseGroupNames = baseGroups.filter((g) => ruleOptionsEnable[g.name]).map((g) => g.name);
   const customGroupNames = customGroup ? [customGroup.name] : [];
@@ -1284,7 +1290,7 @@ function main(config) {
     'dns-hijack': ['any:53', 'tcp://any:53'],
   };
 
-  newConfig['proxies'] = [...customProxies, ...mappedProxies, ...directProxies];
+  newConfig['proxies'] = [...mappedProxies, ...customProxies, ...directProxies];
   newConfig['proxy-groups'] = [
     globalGroup,
     ...functionalGroups,
