@@ -9,7 +9,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const upstreamUrl =
   'https://raw.githubusercontent.com/AIsouler/MyClash/main/Script/Script.js';
 
-const overlayPath = resolve(root, 'overlay', 'discord.js');
+const overlayPaths = [resolve(root, 'overlay', 'discord.js'), resolve(root, 'overlay', 'onedrive.js')];
 const outputPath = resolve(root, 'dist', 'Script.js');
 
 const response = await fetch(upstreamUrl, {
@@ -44,13 +44,15 @@ for (const marker of requiredMarkers) {
   }
 }
 
-const overlay = await readFile(overlayPath, 'utf8');
+const overlays = await Promise.all(
+  overlayPaths.map(async (path) => (await readFile(path, 'utf8')).trim()),
+);
 
 const combined = `${upstream.trimEnd()}
 
 /* ===== 以下内容由个人仓库自动追加 ===== */
 
-${overlay.trim()}
+${overlays.join('\n\n')}
 `;
 
 // 在写入正式文件前实际加载并运行一次。
@@ -165,6 +167,47 @@ assert(
   googleRuleIndex === -1 ||
     discordRuleIndex < googleRuleIndex,
   'Discord 规则必须位于 Google 规则之前',
+);
+
+assert(ruleOptionsEnable.OneDrive === true, 'OneDrive 开关没有成功启用');
+
+const onedriveGroup = groups.find((group) => group.name === 'OneDrive');
+
+assert(onedriveGroup, '没有生成 OneDrive 策略组');
+assert(
+  Array.isArray(onedriveGroup.proxies) &&
+    onedriveGroup.proxies.length > 0,
+  'OneDrive 策略组中没有可选策略',
+);
+assert(
+  onedriveGroup.proxies.includes('直连'),
+  'OneDrive 策略组缺少「直连」选项',
+);
+
+assert(providers.onedrive, '没有生成 onedrive Rule Provider');
+assert(
+  providers.onedrive.behavior === 'domain',
+  'onedrive Rule Provider 不是 domain 类型',
+);
+
+assert(providers.sharepoint, '没有生成 sharepoint Rule Provider');
+assert(
+  providers.sharepoint.behavior === 'domain',
+  'sharepoint Rule Provider 不是 domain 类型',
+);
+
+for (const rule of [
+  'RULE-SET,onedrive,OneDrive',
+  'RULE-SET,sharepoint,OneDrive',
+]) {
+  assert(rules.includes(rule), `缺少 OneDrive 规则：${rule}`);
+}
+
+assert(
+  googleRuleIndex === -1 ||
+    rules.indexOf('RULE-SET,onedrive,OneDrive') <
+      googleRuleIndex,
+  'OneDrive 规则必须位于 Google 规则之前',
 );
 
 const missingProviders = rules

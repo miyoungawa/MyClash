@@ -11,7 +11,7 @@ on:
     branches:
       - main
     paths:
-      - 'overlay/discord.js'
+      - 'overlay/**'
       - 'tools/build.mjs'
       - '.github/workflows/update-script.yml'
 
