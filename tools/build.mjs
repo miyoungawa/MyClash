@@ -9,11 +9,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const upstreamUrl =
   'https://raw.githubusercontent.com/AIsouler/MyClash/main/Script/Script.js';
 
-const overlayPaths = [
-  resolve(root, 'overlay', 'discord.js'),
-  resolve(root, 'overlay', 'onedrive.js'),
-  resolve(root, 'overlay', 'regions.js'),
-];
+const overlayPaths = [resolve(root, 'overlay', 'discord.js'), resolve(root, 'overlay', 'regions.js')];
 const outputPath = resolve(root, 'dist', 'Script.js');
 
 const response = await fetch(upstreamUrl, {
@@ -118,6 +114,14 @@ const sampleConfig = {
       alterId: 0,
     },
     {
+      name: '新加坡测试节点',
+      type: 'ss',
+      server: 'sg.example.com',
+      port: 443,
+      cipher: 'aes-256-gcm',
+      password: 'test',
+    },
+    {
       name: '台湾测试节点',
       type: 'ss',
       server: 'tw.example.com',
@@ -181,68 +185,34 @@ assert(
   'Discord 规则必须位于 Google 规则之前',
 );
 
-assert(ruleOptionsEnable.OneDrive === true, 'OneDrive 开关没有成功启用');
-
-const onedriveGroup = groups.find((group) => group.name === 'OneDrive');
-
-assert(onedriveGroup, '没有生成 OneDrive 策略组');
-assert(
-  Array.isArray(onedriveGroup.proxies) &&
-    onedriveGroup.proxies.length > 0,
-  'OneDrive 策略组中没有可选策略',
-);
-assert(
-  onedriveGroup.proxies.includes('直连'),
-  'OneDrive 策略组缺少「直连」选项',
-);
-
-assert(providers.onedrive, '没有生成 onedrive Rule Provider');
-assert(
-  providers.onedrive.behavior === 'domain',
-  'onedrive Rule Provider 不是 domain 类型',
-);
-
-assert(providers.sharepoint, '没有生成 sharepoint Rule Provider');
-assert(
-  providers.sharepoint.behavior === 'domain',
-  'sharepoint Rule Provider 不是 domain 类型',
-);
-
-for (const rule of [
-  'RULE-SET,onedrive,OneDrive',
-  'RULE-SET,sharepoint,OneDrive',
-]) {
-  assert(rules.includes(rule), `缺少 OneDrive 规则：${rule}`);
+// 地区调整断言：被移除的地区不应再生成策略组，其节点应归入「其他节点」
+for (const removed of ['新加坡', '台湾省']) {
+  assert(
+    !groups.some((group) => group.name === removed),
+    `地区「${removed}」不应再生成策略组`,
+  );
+  assert(
+    !groups.some((group) => group.name === `${removed}-自动选择`),
+    `地区「${removed}」的自动选择子组不应再生成`,
+  );
 }
 
-assert(
-  googleRuleIndex === -1 ||
-    rules.indexOf('RULE-SET,onedrive,OneDrive') <
-      googleRuleIndex,
-  'OneDrive 规则必须位于 Google 规则之前',
-);
-
-const taiwanGroup = groups.find((group) => group.name === '台湾省');
-
-assert(taiwanGroup, '没有生成台湾省策略组');
-assert(
-  taiwanGroup.proxies.some((name) => name.includes('台湾测试节点')),
-  '台湾省策略组中没有台湾节点',
-);
-assert(
-  groups.some((group) => group.name === '台湾省-自动选择'),
-  '没有生成台湾省-自动选择策略组',
-);
+for (const kept of ['香港', '日本', '美国']) {
+  assert(
+    groups.some((group) => group.name === kept),
+    `地区「${kept}」不应被移除`,
+  );
+}
 
 const otherGroup = groups.find((group) => group.name === '其他节点');
 
-assert(
-  !otherGroup ||
-    !otherGroup.proxies.some((name) =>
-      name.includes('台湾测试节点'),
-    ),
-  '台湾节点同时被归入「其他节点」，说明地区表未同步写入两个数组',
-);
+assert(otherGroup, '被移除地区的节点没有归入「其他节点」');
+for (const node of ['新加坡测试节点', '台湾测试节点']) {
+  assert(
+    otherGroup.proxies.some((name) => name.includes(node)),
+    `节点「${node}」没有出现在「其他节点」中`,
+  );
+}
 
 const missingProviders = rules
   .filter(
