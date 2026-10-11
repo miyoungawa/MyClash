@@ -240,6 +240,22 @@ assert(
   '哔哩哔哩规则必须位于 geolocation-cn（国内直连）之前，否则无法接管 B 站主站流量',
 );
 
+// 哔哩哔哩 DNS 加固断言：B 站域名必须走国内解析器，
+// 否则国外 DoH 会把它答成海外加速地址（从国内直连会超时）
+const nameserverPolicy = output.dns && output.dns['nameserver-policy'];
+
+assert(nameserverPolicy, '生成的配置缺少 dns.nameserver-policy');
+assert(
+  Array.isArray(nameserverPolicy['rule-set:bilibili']) &&
+    nameserverPolicy['rule-set:bilibili'].length > 0,
+  '缺少 rule-set:bilibili 的解析器策略',
+);
+assert(
+  JSON.stringify(nameserverPolicy['rule-set:bilibili']) ===
+    JSON.stringify(nameserverPolicy['rule-set:cn']),
+  'rule-set:bilibili 的解析器应与 rule-set:cn 保持一致',
+);
+
 // 地区调整断言：被移除的地区不应再生成策略组（含其自动选择子组），其节点应归入「其他节点」
 // 按关键词匹配而非完整名称，兼容上游改名（「台湾省」→「台湾」）
 for (const keyword of ['新加坡', '台湾']) {
