@@ -185,15 +185,12 @@ assert(
   'Discord 规则必须位于 Google 规则之前',
 );
 
-// 地区调整断言：被移除的地区不应再生成策略组，其节点应归入「其他节点」
-for (const removed of ['新加坡', '台湾省']) {
+// 地区调整断言：被移除的地区不应再生成策略组（含其自动选择子组），其节点应归入「其他节点」
+// 按关键词匹配而非完整名称，兼容上游改名（「台湾省」→「台湾」）
+for (const keyword of ['新加坡', '台湾']) {
   assert(
-    !groups.some((group) => group.name === removed),
-    `地区「${removed}」不应再生成策略组`,
-  );
-  assert(
-    !groups.some((group) => group.name === `${removed}-自动选择`),
-    `地区「${removed}」的自动选择子组不应再生成`,
+    !groups.some((group) => group.name.includes(keyword)),
+    `仍生成了含「${keyword}」的策略组，地区移除未生效`,
   );
 }
 

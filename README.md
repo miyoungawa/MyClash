@@ -29,7 +29,7 @@
 | `Script/Script.js`                                     | 上游精简版脚本快照                                                            |
 | `Script/mihomoScript.js`                               | 上游全量版脚本快照                                                            |
 | `Config/mihomoConfigLite.yaml` / `Config/mihomoConfig.yaml` | 上游配置文件快照（provider 式，独立使用，**不能**挂覆写脚本，见下文） |
-| `overlay/`                                                                  | 补丁目录：`discord.js`（Discord 分流）、`regions.js`（地区调整：移除新加坡与台湾省），构建时依次追加到上游脚本末尾 |
+| `overlay/`                                                                  | 补丁目录：`discord.js`（Discord 分流）、`regions.js`（地区调整：移除新加坡与台湾），构建时依次追加到上游脚本末尾 |
 | `tools/build.mjs`                                      | 构建脚本：下载上游脚本 → 追加补丁 → 沙箱自检 → 写出`dist/Script.js`      |
 | `Test/`                                                | 覆写脚本测试套件（单元 / 集成 / ES2020 兼容性 / QuickJS 引擎验证）            |
 | `.github/workflows/`                                   | 定时构建与格式检查                                                            |
@@ -198,7 +198,7 @@ https://raw.githubusercontent.com/miyoungawa/MyClash/main/Script/mihomoScript.js
 **本仓库追加**
 
 - `Discord` （由 `overlay/discord.js` 注入，仅 `dist/Script.js` 包含；补丁会把它插在基础策略组之后、Google 等宽泛规则之前，避免 Discord 附件域名被 Google 规则提前匹配）
-- 地区调整 `新加坡` / `台湾省` 被移除 （由 `overlay/regions.js` 注入，仅 `dist/Script.js` 包含。脚本内地区表分为 `regionDefinitions`（判定是否地区节点）与 `allRegionDefinitions`（节点匹配与建组）两个数组，增删地区必须同时处理两者，否则会出现「地区组没生成、节点却仍被当作地区节点」的问题，补丁已处理；被移除地区的节点不会被丢弃，而是归入「其他节点」）
+- 地区调整 `新加坡` / `台湾` 被移除 （由 `overlay/regions.js` 注入，仅 `dist/Script.js` 包含。脚本内地区表分为 `regionDefinitions`（判定是否地区节点）与 `allRegionDefinitions`（节点匹配与建组）两个数组，增删地区必须同时处理两者，否则会出现「地区组没生成、节点却仍被当作地区节点」的问题，补丁已处理；被移除地区的节点不会被丢弃，而是归入「其他节点」。移除按关键词匹配而非完整名称，以兼容上游改名——上游曾把「台湾省」改名为「台湾」，按旧名移除会静默失效并导致构建断言失败）
 
 **条件生成**
 
@@ -214,7 +214,7 @@ https://raw.githubusercontent.com/miyoungawa/MyClash/main/Script/mihomoScript.js
 - `日本`
 - `美国`
 - `新加坡` （已由 `overlay/regions.js` 移除）
-- `台湾省` （全量版已内置；精简版与 `dist/Script.js` 均不使用，已由 `overlay/regions.js` 移除）
+- `台湾` （上游更名自「台湾省」，全量版与精简版均已内置；`dist/Script.js` 不使用，已由 `overlay/regions.js` 移除）
 - `低倍率节点`
 - `高倍率节点`
 - `其他节点`
@@ -258,7 +258,7 @@ https://raw.githubusercontent.com/miyoungawa/MyClash/main/Script/mihomoScript.js
 1. 下载上游精简版 `Script.js`（`AIsouler/MyClash` main 分支）
 2. 校验上游关键结构标记（`ruleOptionsEnable`、`baseGroups`、`serviceConfigs`、`function main`），结构变化则中止，不发布错误脚本
 3. 在脚本末尾依次追加 [overlay/](./overlay) 下的补丁（`discord.js`、`regions.js`）
-4. 在 Node `vm` 沙箱中实际执行一次 `main(示例配置)` 做断言：Discord 策略组与规则是否齐全、其规则是否位于 Google 规则之前、新加坡与台湾省地区组是否已移除且其节点归入「其他节点」、香港 / 日本 / 美国是否仍保留、所有 `RULE-SET` 引用是否有对应 provider、策略组名是否重复
+4. 在 Node `vm` 沙箱中实际执行一次 `main(示例配置)` 做断言：Discord 策略组与规则是否齐全、其规则是否位于 Google 规则之前、新加坡与台湾地区组是否已移除（按关键词判断）且其节点归入「其他节点」、香港 / 日本 / 美国是否仍保留、所有 `RULE-SET` 引用是否有对应 provider、策略组名是否重复
 5. 全部通过后才覆盖 `dist/Script.js`
 
 `.github/workflows/update-script.yml` 每 6 小时检查一次上游变化，也可手动触发；`overlay/`、`tools/`、workflow 自身有改动时会立即重建。

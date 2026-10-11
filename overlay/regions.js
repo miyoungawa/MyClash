@@ -4,8 +4,11 @@
  * 本文件不会修改上游 Script.js。
  * tools/build.mjs 会把本补丁追加到最新版上游脚本末尾。
  *
- * 作用：增删地区策略组（当前为移除 新加坡 与 台湾省），
+ * 作用：增删地区策略组（当前为移除 新加坡 与 台湾），
  *       被移除地区的节点不会被丢弃，而是归入「其他节点」。
+ *
+ * 移除按“关键词”而非“完整名称”匹配：上游曾把「台湾省」改名为「台湾」，
+ * 一旦改名，按旧名移除就会静默失效（地区组照常生成），改用关键词可自动兼容。
  *
  * 注意：脚本内有两个数组——
  *   regionDefinitions        用于判定“是否地区节点”（影响节点过滤与「其他节点」归类）
@@ -15,13 +18,14 @@
  * 「地区组没有生成、节点却仍被当作地区节点」或「节点匹配不到地区」的问题。
  */
 (() => {
-  // 需要移除的地区（保留：香港 / 日本 / 美国）
-  const removedRegionNames = ['新加坡', '台湾省'];
+  // 需要移除的地区关键词（保留：香港 / 日本 / 美国）
+  const removedRegionKeywords = ['新加坡', '台湾'];
 
   // 需要追加的地区，字段与上游 regionDefinitions 保持一致（当前为空）
   const extraRegions = [];
 
-  const shouldRemove = (region) => removedRegionNames.includes(region.name);
+  const shouldRemove = (region) =>
+    removedRegionKeywords.some((keyword) => region.name.includes(keyword));
 
   // 1) 移除地区定义（两个数组都要处理）
   for (let i = regionDefinitions.length - 1; i >= 0; i -= 1) {
@@ -34,7 +38,10 @@
 
   // 2) 清理指向被移除地区的默认选中，避免生成指向不存在策略组的配置
   for (const service of serviceConfigs) {
-    if (removedRegionNames.includes(service.defaultSelected)) {
+    if (
+      typeof service.defaultSelected === 'string' &&
+      removedRegionKeywords.some((keyword) => service.defaultSelected.includes(keyword))
+    ) {
       delete service.defaultSelected;
     }
   }
