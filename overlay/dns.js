@@ -5,7 +5,7 @@
  * tools/build.mjs 会把本补丁追加到最新版上游脚本末尾。
  *
  * 作用：
- *   1. 统一「国内直连」场景的解析器，并把腾讯 Public DNS（119.29.29.29）提到首位：
+ *   1. 统一「国内直连」场景的解析器，优先使用阿里 DNS（223.5.5.5）：
  *      改写 chinaDNS 本身，使 default-nameserver（引导）、proxy-server-nameserver
  *      （解析节点 server 域名）、nameserver-policy:cn 与 direct-nameserver 四处一致，
  *      不再使用 114.114.114.114、1.12.12.12、doh.pub。
@@ -22,13 +22,12 @@
  * 本补丁需排在 bilibili.js 之后：第 2 步要用到它设置的 ruleOptionsEnable 开关。
  */
 (() => {
-  // 1) 国内直连解析器：114 DNS 首选、腾讯 Public DNS 备选（按需去掉阿里 223.5.5.5）。
-  //    注意：内核是并发查询、取先返回者，"首选"只是配置顺序，不保证一定用 114；
-  //    好处是抗故障——若 114 不可达，内核会自动采用腾讯的结果，不会因此断网。
-  //    背景：114.114.114.114 在上游 commonDnsList 中被承认为公共 DNS，但它有劫持/重定向的历史记录，
-  //    所以本补丁早期把它从引导层/节点域名层移除过；这里按需放回并置于首位做实测。
+  // 1) 国内直连解析器：阿里 DNS（223.5.5.5）首选、腾讯 Public DNS（119.29.29.29）备选。
+  //    注意：内核是并发查询、取先返回者，"首选"只是配置顺序，不保证一定用阿里；
+  //    好处是抗故障——若阿里不可达，内核会自动采用腾讯的结果，不会因此断网。
+  //    历史实测：114.114.114.114 与腾讯在部分网络上存在劫持/超时问题，故回到阿里首选。
   //    改写 chinaDNS 会让 nameserver-policy:cn 与 direct-nameserver 一并生效（它们引用同一数组）。
-  const domesticDns = ['114.114.114.114#DIRECT', '119.29.29.29#DIRECT'];
+  const domesticDns = ['223.5.5.5#DIRECT', '119.29.29.29#DIRECT'];
 
   chinaDNS.splice(0, chinaDNS.length, ...domesticDns);
   defaultDNS.splice(0, defaultDNS.length, ...domesticDns);
