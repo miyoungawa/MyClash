@@ -258,8 +258,8 @@ assert(
 );
 
 // 国内直连解析器统一断言：四处（引导 / 节点域名 / 国内策略 / 直连出口）必须完全一致，
-// 且阿里 DNS 位于首位
-const expectedDomesticDns = ['223.5.5.5#DIRECT', '119.29.29.29#DIRECT'];
+// 且 114 DNS 位于首位
+const expectedDomesticDns = ['114.114.114.114#DIRECT', '223.5.5.5#DIRECT'];
 
 for (const field of ['default-nameserver', 'proxy-server-nameserver', 'direct-nameserver']) {
   assert(
@@ -276,8 +276,8 @@ for (const key of ['rule-set:cn', 'rule-set:bilibili']) {
 }
 
 assert(
-  output.dns['direct-nameserver'][0] === '223.5.5.5#DIRECT',
-  '阿里 DNS 应位于国内直连解析器首位',
+  output.dns['direct-nameserver'][0] === '114.114.114.114#DIRECT',
+  '114 DNS 应位于国内直连解析器首位',
 );
 
 // 反向断言：防止补丁改过头，破坏防泄露 / 局域网解析 / 抖音专用策略
