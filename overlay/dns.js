@@ -5,9 +5,10 @@
  * tools/build.mjs 会把本补丁追加到最新版上游脚本末尾。
  *
  * 作用：
- *   1. 统一「国内直连」场景的解析器：把 default-nameserver（引导）与
- *      proxy-server-nameserver（解析节点 server 域名）换成与国内直连相同的
- *      chinaDNS（223.5.5.5 / 119.29.29.29），不再使用 114.114.114.114 等。
+ *   1. 统一「国内直连」场景的解析器，并把腾讯 Public DNS（119.29.29.29）提到首位：
+ *      改写 chinaDNS 本身，使 default-nameserver（引导）、proxy-server-nameserver
+ *      （解析节点 server 域名）、nameserver-policy:cn 与 direct-nameserver 四处一致，
+ *      不再使用 114.114.114.114、1.12.12.12、doh.pub。
  *   2. 为 B 站域名族补 nameserver-policy（依赖 bilibili.js 注册的 provider）。
  *
  * 刻意不动的部分：
@@ -21,9 +22,16 @@
  * 本补丁需排在 bilibili.js 之后：第 2 步要用到它设置的 ruleOptionsEnable 开关。
  */
 (() => {
-  // 1) 国内直连场景统一使用与 rule-set:cn / direct-nameserver 相同的解析器
-  defaultDNS.splice(0, defaultDNS.length, ...chinaDNS);
-  proxyServerDNS.splice(0, proxyServerDNS.length, ...chinaDNS);
+  // 1) 国内直连解析器：腾讯 Public DNS（119.29.29.29）提到首位，阿里 DNS 作为兜底。
+  //    实测 CDN 调度下 DNSPod 的答案更稳定；而 AliDNS 会随入口不同返回 8 条或仅 1 条，
+  //    答案为单条时没有备选可切，那个边缘一抖动就直接暴露成 dial timeout（tcp-concurrent 也无能为力）。
+  //    注：DNSPod 免费版公共解析的第二个入口 119.28.28.28 已退役（官方公告），故不添加。
+  //    改写 chinaDNS 会让 nameserver-policy:cn 与 direct-nameserver 一并生效（它们引用同一数组）。
+  const domesticDns = ['119.29.29.29#DIRECT', '223.5.5.5#DIRECT'];
+
+  chinaDNS.splice(0, chinaDNS.length, ...domesticDns);
+  defaultDNS.splice(0, defaultDNS.length, ...domesticDns);
+  proxyServerDNS.splice(0, proxyServerDNS.length, ...domesticDns);
 
   // 2) B 站域名族固定国内解析器（国外 DoH 会把它答成海外加速地址，从国内直连会超时）。
   //    nameserver-policy 在 buildDnsAndHostsConfig 内部就地构造，加载期无法访问，

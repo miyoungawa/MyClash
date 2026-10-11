@@ -257,8 +257,9 @@ assert(
   'rule-set:bilibili 的解析器应与 rule-set:cn 保持一致',
 );
 
-// 国内直连解析器统一断言：引导层与节点域名层应与国内直连场景使用同一对解析器
-const expectedDomesticDns = ['223.5.5.5#DIRECT', '119.29.29.29#DIRECT'];
+// 国内直连解析器统一断言：四处（引导 / 节点域名 / 国内策略 / 直连出口）必须完全一致，
+// 且腾讯 Public DNS 位于首位
+const expectedDomesticDns = ['119.29.29.29#DIRECT', '223.5.5.5#DIRECT'];
 
 for (const field of ['default-nameserver', 'proxy-server-nameserver', 'direct-nameserver']) {
   assert(
@@ -266,6 +267,18 @@ for (const field of ['default-nameserver', 'proxy-server-nameserver', 'direct-na
     `${field} 应为国内直连解析器 ${expectedDomesticDns.join(' / ')}，实际为 ${JSON.stringify(output.dns[field])}`,
   );
 }
+
+for (const key of ['rule-set:cn', 'rule-set:bilibili']) {
+  assert(
+    JSON.stringify(output.dns['nameserver-policy'][key]) === JSON.stringify(expectedDomesticDns),
+    `nameserver-policy 的 ${key} 应为 ${expectedDomesticDns.join(' / ')}，实际为 ${JSON.stringify(output.dns['nameserver-policy'][key])}`,
+  );
+}
+
+assert(
+  output.dns['direct-nameserver'][0] === '119.29.29.29#DIRECT',
+  '腾讯 Public DNS 应位于国内直连解析器首位',
+);
 
 // 反向断言：防止补丁改过头，破坏防泄露 / 局域网解析 / 抖音专用策略
 assert(
