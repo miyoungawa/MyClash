@@ -1441,13 +1441,13 @@ function main(config) {
  * 本补丁需排在 bilibili.js 之后：第 2 步要用到它设置的 ruleOptionsEnable 开关。
  */
 (() => {
-  // 1) 国内直连解析器：阿里 Public DNS 首选、腾讯 Public DNS 备选。
-  //    顺序只影响可读性——内核是并发查询、取先返回者；两家都会随 CDN 调度给出不同答案：
-  //    实测同一域名下阿里常给同省边缘（有时仅 1 条），腾讯则给过香港/跨省的多条或单条。
-  //    选阿里在前，是因为实测它更贴合本地调度（能稳定拿到陕西电信边缘）。
-  //    注：DNSPod 免费版公共解析的第二个入口 119.28.28.28 已退役（官方公告），故不添加。
+  // 1) 国内直连解析器：114 DNS 首选、腾讯 Public DNS 备选（按需去掉阿里 223.5.5.5）。
+  //    注意：内核是并发查询、取先返回者，"首选"只是配置顺序，不保证一定用 114；
+  //    好处是抗故障——若 114 不可达，内核会自动采用腾讯的结果，不会因此断网。
+  //    背景：114.114.114.114 在上游 commonDnsList 中被承认为公共 DNS，但它有劫持/重定向的历史记录，
+  //    所以本补丁早期把它从引导层/节点域名层移除过；这里按需放回并置于首位做实测。
   //    改写 chinaDNS 会让 nameserver-policy:cn 与 direct-nameserver 一并生效（它们引用同一数组）。
-  const domesticDns = ['223.5.5.5#DIRECT', '119.29.29.29#DIRECT'];
+  const domesticDns = ['114.114.114.114#DIRECT', '119.29.29.29#DIRECT'];
 
   chinaDNS.splice(0, chinaDNS.length, ...domesticDns);
   defaultDNS.splice(0, defaultDNS.length, ...domesticDns);
