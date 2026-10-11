@@ -22,12 +22,13 @@
  * 本补丁需排在 bilibili.js 之后：第 2 步要用到它设置的 ruleOptionsEnable 开关。
  */
 (() => {
-  // 1) 国内直连解析器：腾讯 Public DNS（119.29.29.29）提到首位，阿里 DNS 作为兜底。
-  //    实测 CDN 调度下 DNSPod 的答案更稳定；而 AliDNS 会随入口不同返回 8 条或仅 1 条，
-  //    答案为单条时没有备选可切，那个边缘一抖动就直接暴露成 dial timeout（tcp-concurrent 也无能为力）。
+  // 1) 国内直连解析器：阿里 Public DNS 首选、腾讯 Public DNS 备选。
+  //    顺序只影响可读性——内核是并发查询、取先返回者；两家都会随 CDN 调度给出不同答案：
+  //    实测同一域名下阿里常给同省边缘（有时仅 1 条），腾讯则给过香港/跨省的多条或单条。
+  //    选阿里在前，是因为实测它更贴合本地调度（能稳定拿到陕西电信边缘）。
   //    注：DNSPod 免费版公共解析的第二个入口 119.28.28.28 已退役（官方公告），故不添加。
   //    改写 chinaDNS 会让 nameserver-policy:cn 与 direct-nameserver 一并生效（它们引用同一数组）。
-  const domesticDns = ['119.29.29.29#DIRECT', '223.5.5.5#DIRECT'];
+  const domesticDns = ['223.5.5.5#DIRECT', '119.29.29.29#DIRECT'];
 
   chinaDNS.splice(0, chinaDNS.length, ...domesticDns);
   defaultDNS.splice(0, defaultDNS.length, ...domesticDns);
