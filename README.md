@@ -29,7 +29,7 @@
 | `Script/Script.js`                                     | 上游精简版脚本快照                                                            |
 | `Script/mihomoScript.js`                               | 上游全量版脚本快照                                                            |
 | `Config/mihomoConfigLite.yaml` / `Config/mihomoConfig.yaml` | 上游配置文件快照（provider 式，独立使用，**不能**挂覆写脚本，见下文） |
-| `overlay/`                                                                  | 补丁目录：`discord.js`（Discord 分流）、`regions.js`（地区调整：移除新加坡与台湾），构建时依次追加到上游脚本末尾 |
+| `overlay/`                                                                  | 补丁目录：`discord.js`（Discord 分流）、`regions.js`（地区调整：移除新加坡与台湾）、`service-defaults.js`（默认选中：AI→日本、Discord→手动选择），构建时依次追加到上游脚本末尾 |
 | `tools/build.mjs`                                      | 构建脚本：下载上游脚本 → 追加补丁 → 沙箱自检 → 写出`dist/Script.js`      |
 | `Test/`                                                | 覆写脚本测试套件（单元 / 集成 / ES2020 兼容性 / QuickJS 引擎验证）            |
 | `.github/workflows/`                                   | 定时构建与格式检查                                                            |
@@ -64,7 +64,6 @@
 - ✅ 自动识别节点倍率并归类为「低倍率节点 / 高倍率节点」
 - ✅ 修复链式代理引用：`dialer-proxy` 目标改名时跟随更新，目标不存在时移除该字段
 - ✅ 支持在脚本中配置自定义节点（自动生成“自建节点”策略组，与订阅节点重名时自动添加“自建-”前缀）
-- ✅ 支持链式代理（将自定义节点作为落地节点，经“链式中转”策略组通过订阅节点中转；启用后自动为自定义节点添加 `dialer-proxy`）
 - ✅ 支持极简模式：只保留「默认代理 / 直连 / GLOBAL」，不生成分流组与地区组
 - ✅ 支持自定义是否生成地区自动选择策略组
 - ✅ 支持自定义是否隐藏地区手动选择策略组
@@ -95,7 +94,6 @@
 | `过滤非地区节点`                                   | true  | 剔除匹配不到地区、且命中信息节点关键词的节点                     |
 | `屏蔽国外QUIC`                                     | true  | UDP 443 且目标非国内地址一律 REJECT，防止 QUIC 绕过代理          |
 | `代理IPV4优先` / `代理IPV6优先`                  | false | 统一节点 IP 版本，两者同时开启时不生效                           |
-| `链式代理`                                         | false | 需配合自定义节点使用，未配置自定义节点时会直接报错               |
 
 全量版另有 `负载均衡`、`FCM`、`YouTube`、`Microsoft`、`Apple`、`TikTok`、`Twitter`、`Meta`、`Line`、`Netflix`、`Emby`、`PikPak`、`Spotify`、`Crypto`、`EHentai` 等开关。
 
@@ -172,7 +170,7 @@ https://raw.githubusercontent.com/miyoungawa/MyClash/main/Script/mihomoScript.js
 **精简版内置分流组**
 
 - `Google`
-- `AI` （默认选中「美国」）
+- `AI` （默认选中「日本」，由 `overlay/service-defaults.js` 改写上游默认的「美国」）
 - `Telegram`
 - `Steam`
 - `AdBlock`
@@ -198,12 +196,12 @@ https://raw.githubusercontent.com/miyoungawa/MyClash/main/Script/mihomoScript.js
 **本仓库追加**
 
 - `Discord` （由 `overlay/discord.js` 注入，仅 `dist/Script.js` 包含；补丁会把它插在基础策略组之后、Google 等宽泛规则之前，避免 Discord 附件域名被 Google 规则提前匹配）
+- 默认选中改为 `AI` → 「日本」、`Discord` → 「手动选择」 （由 `overlay/service-defaults.js` 注入，仅 `dist/Script.js` 包含。mihomo 的 `select` 组支持 `default-selected`（源码 `SelectorOption`，官方文档未收录），**仅在客户端没有保存过该组的选择时生效**；在面板里选过之后由 `profile.store-selected` 缓存覆盖。若该名称不在组的 `proxies` 列表中，内核会静默回落到列表第一项，构建脚本会对此做断言）
 - 地区调整 `新加坡` / `台湾` 被移除 （由 `overlay/regions.js` 注入，仅 `dist/Script.js` 包含。脚本内地区表分为 `regionDefinitions`（判定是否地区节点）与 `allRegionDefinitions`（节点匹配与建组）两个数组，增删地区必须同时处理两者，否则会出现「地区组没生成、节点却仍被当作地区节点」的问题，补丁已处理；被移除地区的节点不会被丢弃，而是归入「其他节点」。移除按关键词匹配而非完整名称，以兼容上游改名——上游曾把「台湾省」改名为「台湾」，按旧名移除会静默失效并导致构建断言失败）
 
 **条件生成**
 
-- `自建节点/链式落地` （仅添加了自定义节点时生成）
-- `链式中转` （仅启用链式代理且配置自定义节点时生成）
+- `自建节点` （仅添加了自定义节点时生成。注意：上游已移除链式代理功能，`链式落地` / `链式中转` 组不再生成）
 
 ## 内置节点组
 
@@ -257,8 +255,8 @@ https://raw.githubusercontent.com/miyoungawa/MyClash/main/Script/mihomoScript.js
 
 1. 下载上游精简版 `Script.js`（`AIsouler/MyClash` main 分支）
 2. 校验上游关键结构标记（`ruleOptionsEnable`、`baseGroups`、`serviceConfigs`、`function main`），结构变化则中止，不发布错误脚本
-3. 在脚本末尾依次追加 [overlay/](./overlay) 下的补丁（`discord.js`、`regions.js`）
-4. 在 Node `vm` 沙箱中实际执行一次 `main(示例配置)` 做断言：Discord 策略组与规则是否齐全、其规则是否位于 Google 规则之前、新加坡与台湾地区组是否已移除（按关键词判断）且其节点归入「其他节点」、香港 / 日本 / 美国是否仍保留、所有 `RULE-SET` 引用是否有对应 provider、策略组名是否重复
+3. 在脚本末尾依次追加 [overlay/](./overlay) 下的补丁（`discord.js`、`service-defaults.js`、`regions.js`，数组顺序即执行顺序）
+4. 在 Node `vm` 沙箱中实际执行一次 `main(示例配置)` 做断言：Discord 策略组与规则是否齐全、其规则是否位于 Google 规则之前、AI 与 Discord 的 `default-selected` 是否为「日本」「手动选择」且该名称确实存在于对应组的 `proxies` 中、新加坡与台湾地区组是否已移除（按关键词判断）且其节点归入「其他节点」、香港 / 日本 / 美国是否仍保留、所有 `RULE-SET` 引用是否有对应 provider、策略组名是否重复
 5. 全部通过后才覆盖 `dist/Script.js`
 
 `.github/workflows/update-script.yml` 每 6 小时检查一次上游变化，也可手动触发；`overlay/`、`tools/`、workflow 自身有改动时会立即重建。

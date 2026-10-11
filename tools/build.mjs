@@ -9,7 +9,11 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const upstreamUrl =
   'https://raw.githubusercontent.com/AIsouler/MyClash/main/Script/Script.js';
 
-const overlayPaths = [resolve(root, 'overlay', 'discord.js'), resolve(root, 'overlay', 'regions.js')];
+const overlayPaths = [
+  resolve(root, 'overlay', 'discord.js'),
+  resolve(root, 'overlay', 'service-defaults.js'),
+  resolve(root, 'overlay', 'regions.js'),
+];
 const outputPath = resolve(root, 'dist', 'Script.js');
 
 const response = await fetch(upstreamUrl, {
@@ -184,6 +188,27 @@ assert(
     discordRuleIndex < googleRuleIndex,
   'Discord 规则必须位于 Google 规则之前',
 );
+
+// 默认选中断言：default-selected 必须确实存在于该组的 proxies 中，
+// 否则内核会静默回落到列表第一项（见 mihomo Selector 的 selectedProxy）
+const expectedDefaultSelected = {
+  AI: '日本',
+  Discord: '手动选择',
+};
+
+for (const [groupName, target] of Object.entries(expectedDefaultSelected)) {
+  const group = groups.find((item) => item.name === groupName);
+
+  assert(group, `没有生成 ${groupName} 策略组`);
+  assert(
+    group['default-selected'] === target,
+    `${groupName} 的 default-selected 应为「${target}」，实际为「${group['default-selected']}」`,
+  );
+  assert(
+    group.proxies.includes(target),
+    `${groupName} 的默认选中「${target}」不在其 proxies 列表中，内核会回落到第一项`,
+  );
+}
 
 // 地区调整断言：被移除的地区不应再生成策略组（含其自动选择子组），其节点应归入「其他节点」
 // 按关键词匹配而非完整名称，兼容上游改名（「台湾省」→「台湾」）
