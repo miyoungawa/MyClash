@@ -13,6 +13,8 @@
  *
  * 该策略组默认选中「直连」，所以默认行为与改动前一致；
  * 需要看港澳台等限定内容时，在面板里把该组切到对应地区即可。
+ *
+ * B 站域名族的 DNS 策略不在这里，见 overlay/dns.js（本文件只负责策略组与规则）。
  */
 (() => {
   const serviceName = '哔哩哔哩';
@@ -55,28 +57,4 @@
 
     prefixRules.splice(cnRuleIndex >= 0 ? cnRuleIndex : 0, 0, bilibiliRule);
   }
-
-  /*
-   * DNS 加固：为 B 站域名族固定国内解析器。
-   *
-   * 背景：国外 DoH 会把 s1.hdslb.com 这类域名答成阿里云全球加速段
-   * （实测 155.102.175.140-147），从国内直连这些地址基本必然超时；
-   * 而国内解析器（223.5.5.5）返回的是国内调度过的边缘地址。
-   * 写法与上游的 'rule-set:cn' / 'rule-set:douyin' 一致。
-   *
-   * nameserver-policy 在 buildDnsAndHostsConfig 内部就地构造，加载期无法访问，
-   * 因此在 main() 返回后补写；顺带复用 'rule-set:cn' 的解析器，避免重复定义。
-   */
-  const originalMain = main;
-
-  main = function (config) {
-    const output = originalMain(config);
-    const nameserverPolicy = output && output.dns && output.dns['nameserver-policy'];
-
-    if (nameserverPolicy && nameserverPolicy['rule-set:cn'] && !nameserverPolicy['rule-set:bilibili']) {
-      nameserverPolicy['rule-set:bilibili'] = nameserverPolicy['rule-set:cn'];
-    }
-
-    return output;
-  };
 })();

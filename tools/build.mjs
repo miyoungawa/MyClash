@@ -12,6 +12,7 @@ const upstreamUrl =
 const overlayPaths = [
   resolve(root, 'overlay', 'discord.js'),
   resolve(root, 'overlay', 'bilibili.js'),
+  resolve(root, 'overlay', 'dns.js'),
   resolve(root, 'overlay', 'service-defaults.js'),
   resolve(root, 'overlay', 'regions.js'),
 ];
@@ -254,6 +255,32 @@ assert(
   JSON.stringify(nameserverPolicy['rule-set:bilibili']) ===
     JSON.stringify(nameserverPolicy['rule-set:cn']),
   'rule-set:bilibili 的解析器应与 rule-set:cn 保持一致',
+);
+
+// 国内直连解析器统一断言：引导层与节点域名层应与国内直连场景使用同一对解析器
+const expectedDomesticDns = ['223.5.5.5#DIRECT', '119.29.29.29#DIRECT'];
+
+for (const field of ['default-nameserver', 'proxy-server-nameserver', 'direct-nameserver']) {
+  assert(
+    JSON.stringify(output.dns[field]) === JSON.stringify(expectedDomesticDns),
+    `${field} 应为国内直连解析器 ${expectedDomesticDns.join(' / ')}，实际为 ${JSON.stringify(output.dns[field])}`,
+  );
+}
+
+// 反向断言：防止补丁改过头，破坏防泄露 / 局域网解析 / 抖音专用策略
+assert(
+  Array.isArray(output.dns.nameserver) &&
+    output.dns.nameserver.length > 0 &&
+    output.dns.nameserver.every((item) => item.includes('#默认代理')),
+  '默认 nameserver 必须保持经代理出口，否则会泄露 DNS 查询',
+);
+assert(
+  output.dns['nameserver-policy']['rule-set:private'] === 'system',
+  'rule-set:private 必须保持 system，否则局域网域名无法解析',
+);
+assert(
+  output.dns['nameserver-policy']['rule-set:douyin'] !== undefined,
+  'rule-set:douyin 应保持上游原样，不应被移除',
 );
 
 // 地区调整断言：被移除的地区不应再生成策略组（含其自动选择子组），其节点应归入「其他节点」
