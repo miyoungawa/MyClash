@@ -11,6 +11,7 @@ const upstreamUrl =
 
 const overlayPaths = [
   resolve(root, 'overlay', 'discord.js'),
+  resolve(root, 'overlay', 'bilibili.js'),
   resolve(root, 'overlay', 'service-defaults.js'),
   resolve(root, 'overlay', 'regions.js'),
 ];
@@ -209,6 +210,35 @@ for (const [groupName, target] of Object.entries(expectedDefaultSelected)) {
     `${groupName} 的默认选中「${target}」不在其 proxies 列表中，内核会回落到第一项`,
   );
 }
+
+// 哔哩哔哩断言：规则必须排在 geolocation-cn 之前，
+// 否则 B 站主站域名会被国内直连规则提前匹配，该组只能接管到海外域名
+const bilibiliGroup = groups.find((group) => group.name === '哔哩哔哩');
+
+assert(bilibiliGroup, '没有生成哔哩哔哩策略组');
+assert(bilibiliGroup.proxies.includes('直连'), '哔哩哔哩策略组缺少「直连」选项');
+assert(
+  bilibiliGroup['default-selected'] === '直连',
+  `哔哩哔哩的 default-selected 应为「直连」，实际为「${bilibiliGroup['default-selected']}」`,
+);
+
+assert(providers.bilibili, '没有生成 bilibili Rule Provider');
+assert(
+  providers.bilibili.behavior === 'domain',
+  'bilibili Rule Provider 不是 domain 类型',
+);
+
+const bilibiliRule = 'RULE-SET,bilibili,哔哩哔哩';
+const cnRuleIndex = rules.indexOf('RULE-SET,geolocation-cn,直连');
+
+assert(
+  rules.filter((rule) => rule === bilibiliRule).length === 1,
+  `哔哩哔哩规则应出现且仅出现一次：${bilibiliRule}`,
+);
+assert(
+  cnRuleIndex === -1 || rules.indexOf(bilibiliRule) < cnRuleIndex,
+  '哔哩哔哩规则必须位于 geolocation-cn（国内直连）之前，否则无法接管 B 站主站流量',
+);
 
 // 地区调整断言：被移除的地区不应再生成策略组（含其自动选择子组），其节点应归入「其他节点」
 // 按关键词匹配而非完整名称，兼容上游改名（「台湾省」→「台湾」）
