@@ -257,27 +257,34 @@ assert(
   'rule-set:bilibili 的解析器应与 rule-set:cn 保持一致',
 );
 
-// 国内直连解析器统一断言：四处（引导 / 节点域名 / 国内策略 / 直连出口）必须完全一致，
-// 且 114 DNS 位于首位
-const expectedDomesticDns = ['114.114.114.114#DIRECT', '223.5.5.5#DIRECT'];
+// 国内直连解析器断言：国内策略（rule-set:cn / rule-set:bilibili）与直连出口（direct-nameserver）
+// 必须统一为「系统 DNS 优先、阿里备用」
+const expectedChinaDns = ['system', '223.5.5.5#DIRECT'];
+// 引导层与节点域名解析保持纯 IP 解析器
+const expectedBootstrapDns = ['114.114.114.114#DIRECT', '223.5.5.5#DIRECT'];
 
-for (const field of ['default-nameserver', 'proxy-server-nameserver', 'direct-nameserver']) {
+for (const field of ['default-nameserver', 'proxy-server-nameserver']) {
   assert(
-    JSON.stringify(output.dns[field]) === JSON.stringify(expectedDomesticDns),
-    `${field} 应为国内直连解析器 ${expectedDomesticDns.join(' / ')}，实际为 ${JSON.stringify(output.dns[field])}`,
+    JSON.stringify(output.dns[field]) === JSON.stringify(expectedBootstrapDns),
+    `${field} 应为引导解析器 ${expectedBootstrapDns.join(' / ')}，实际为 ${JSON.stringify(output.dns[field])}`,
   );
 }
 
 for (const key of ['rule-set:cn', 'rule-set:bilibili']) {
   assert(
-    JSON.stringify(output.dns['nameserver-policy'][key]) === JSON.stringify(expectedDomesticDns),
-    `nameserver-policy 的 ${key} 应为 ${expectedDomesticDns.join(' / ')}，实际为 ${JSON.stringify(output.dns['nameserver-policy'][key])}`,
+    JSON.stringify(output.dns['nameserver-policy'][key]) === JSON.stringify(expectedChinaDns),
+    `nameserver-policy 的 ${key} 应为 ${expectedChinaDns.join(' / ')}，实际为 ${JSON.stringify(output.dns['nameserver-policy'][key])}`,
   );
 }
 
 assert(
-  output.dns['direct-nameserver'][0] === '114.114.114.114#DIRECT',
-  '114 DNS 应位于国内直连解析器首位',
+  JSON.stringify(output.dns['direct-nameserver']) === JSON.stringify(expectedChinaDns),
+  `direct-nameserver 应为 ${expectedChinaDns.join(' / ')}，实际为 ${JSON.stringify(output.dns['direct-nameserver'])}`,
+);
+
+assert(
+  output.dns['direct-nameserver'][0] === 'system',
+  '国内直连应优先使用系统 DNS（system）',
 );
 
 // 反向断言：防止补丁改过头，破坏防泄露 / 局域网解析 / 抖音专用策略
