@@ -258,9 +258,9 @@ assert(
 );
 
 // 国内直连解析器断言：国内策略（rule-set:cn / rule-set:bilibili）与直连出口（direct-nameserver）
-// 必须统一为「系统 DNS 优先、阿里备用」
-const expectedChinaDns = ['system', '223.5.5.5#DIRECT'];
-// 引导层与节点域名解析保持纯 IP 解析器
+// 必须统一为「114 优先、阿里备用」
+const expectedChinaDns = ['114.114.114.114#DIRECT', '223.5.5.5#DIRECT'];
+// 引导层与节点域名解析（独立维护，当前同值）
 const expectedBootstrapDns = ['114.114.114.114#DIRECT', '223.5.5.5#DIRECT'];
 
 for (const field of ['default-nameserver', 'proxy-server-nameserver']) {
@@ -283,8 +283,8 @@ assert(
 );
 
 assert(
-  output.dns['direct-nameserver'][0] === 'system',
-  '国内直连应优先使用系统 DNS（system）',
+  output.dns['direct-nameserver'][0] === '114.114.114.114#DIRECT',
+  '114 DNS 应位于国内直连解析器首位',
 );
 
 // 反向断言：防止补丁改过头，破坏防泄露 / 局域网解析 / 抖音专用策略
