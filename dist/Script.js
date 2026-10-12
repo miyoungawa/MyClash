@@ -1424,10 +1424,12 @@ function main(config) {
  * tools/build.mjs 会把本补丁追加到最新版上游脚本末尾。
  *
  * 作用：
- *   1. 统一「国内直连」场景的解析器，优先使用 114 DNS（114.114.114.114）：
- *      改写 chinaDNS 本身，使 default-nameserver（引导）、proxy-server-nameserver
- *      （解析节点 server 域名）、nameserver-policy:cn 与 direct-nameserver 四处一致，
- *      不再使用上游默认的 223.5.5.5、1.12.12.12、doh.pub。
+ *   1. 统一「国内直连」场景的解析器，优先使用系统 DNS：
+ *      - nameserver-policy:cn（国内域名策略）与 direct-nameserver（直连出口）改为
+ *        「system 优先、阿里 DNS（223.5.5.5）备用」；
+ *      - 引导层（default-nameserver）与节点域名解析（proxy-server-nameserver）
+ *        保持纯 IP 解析器，避免 DoH 服务器域名解析落到系统 DNS 而拿到污染结果；
+ *      - 不再使用上游默认的 1.12.12.12、doh.pub。
  *   2. 为 B 站域名族补 nameserver-policy（依赖 bilibili.js 注册的 provider）。
  *
  * 刻意不动的部分：
@@ -1441,18 +1443,22 @@ function main(config) {
  * 本补丁需排在 bilibili.js 之后：第 2 步要用到它设置的 ruleOptionsEnable 开关。
  */
 (() => {
-  // 1) 国内直连解析器：114 DNS 首选、阿里 DNS（223.5.5.5）备选。
-  //    注意：内核是并发查询、取先返回者，"首选"只是配置顺序，不保证一定用 114；
-  //    好处是抗故障——若 114 不可达，内核会自动采用阿里的结果，不会因此断网。
+  // 1) 国内直连解析器：系统 DNS 优先、阿里 DNS（223.5.5.5）备用。
+  //    system = 操作系统的解析器（Windows 下即系统配置的 DNS；本机为路由器）。
+  //    注意：内核是并发查询、取先返回者，"首选"只是配置顺序，不保证一定用系统解析器；
+  //    好处是抗故障——系统解析器不可用时自动采用阿里的结果，不会因此断网。
   //    说明：备用只在主解析器完全无响应（超时 / SERVFAIL）时才会被采用；
   //    若主解析器返回了内容（哪怕是一条失效 IP），内核不会改用备用，IP 质量靠 tcp-concurrent 兜底。
-  //    历史实测：本仓库在 114 与阿里之间多次切换对比，两者在不同时段各有优劣，此处按需固定为 114 首选。
   //    改写 chinaDNS 会让 nameserver-policy:cn 与 direct-nameserver 一并生效（它们引用同一数组）。
-  const domesticDns = ['114.114.114.114#DIRECT', '223.5.5.5#DIRECT'];
+  const domesticDns = ['system', '223.5.5.5#DIRECT'];
+
+  //    引导层（解析 DoH 服务器域名）与节点域名解析保持纯 IP 解析器：
+  //    引导层若写 system，会把 DoH 域名交给系统 DNS（可能返回污染结果），影响代理可用性。
+  const bootstrapDns = ['114.114.114.114#DIRECT', '223.5.5.5#DIRECT'];
 
   chinaDNS.splice(0, chinaDNS.length, ...domesticDns);
-  defaultDNS.splice(0, defaultDNS.length, ...domesticDns);
-  proxyServerDNS.splice(0, proxyServerDNS.length, ...domesticDns);
+  defaultDNS.splice(0, defaultDNS.length, ...bootstrapDns);
+  proxyServerDNS.splice(0, proxyServerDNS.length, ...bootstrapDns);
 
   // 2) B 站域名族固定国内解析器（国外 DoH 会把它答成海外加速地址，从国内直连会超时）。
   //    nameserver-policy 在 buildDnsAndHostsConfig 内部就地构造，加载期无法访问，
