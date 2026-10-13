@@ -12,7 +12,6 @@ const upstreamUrl =
 const overlayPaths = [
   resolve(root, 'overlay', 'discord.js'),
   resolve(root, 'overlay', 'bilibili.js'),
-  resolve(root, 'overlay', 'apple.js'),
   resolve(root, 'overlay', 'dns.js'),
   resolve(root, 'overlay', 'service-defaults.js'),
   resolve(root, 'overlay', 'regions.js'),
@@ -240,40 +239,6 @@ assert(
 assert(
   cnRuleIndex === -1 || rules.indexOf(bilibiliRule) < cnRuleIndex,
   '哔哩哔哩规则必须位于 geolocation-cn（国内直连）之前，否则无法接管 B 站主站流量',
-);
-
-// Apple 断言：默认选中「直连」、domain + ipcidr 双 provider 齐全、
-// 规则各出现一次，且 apple_cn 中国区直连规则保留
-const appleGroup = groups.find((group) => group.name === 'Apple');
-
-assert(appleGroup, '没有生成 Apple 策略组');
-assert(appleGroup.proxies.includes('直连'), 'Apple 策略组缺少「直连」选项');
-assert(
-  appleGroup['default-selected'] === '直连',
-  `Apple 的 default-selected 应为「直连」，实际为「${appleGroup['default-selected']}」`,
-);
-
-assert(providers.apple, '没有生成 apple Rule Provider');
-assert(
-  providers.apple.behavior === 'domain',
-  'apple Rule Provider 不是 domain 类型',
-);
-assert(providers.apple_ip, '没有生成 apple_ip Rule Provider');
-assert(
-  providers.apple_ip.behavior === 'ipcidr',
-  'apple_ip Rule Provider 不是 ipcidr 类型',
-);
-
-for (const rule of ['RULE-SET,apple,Apple', 'RULE-SET,apple_ip,Apple,no-resolve']) {
-  assert(
-    rules.filter((item) => item === rule).length === 1,
-    `Apple 规则应出现且仅出现一次：${rule}`,
-  );
-}
-
-assert(
-  rules.includes('RULE-SET,apple_cn,直连'),
-  '缺少 apple_cn 中国区直连规则（不得被 Apple 组规则取代）',
 );
 
 // 哔哩哔哩 DNS 加固断言：B 站域名必须走国内解析器，
