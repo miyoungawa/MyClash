@@ -166,7 +166,7 @@ const rateRegionDefinitions = [
   {
     name: lowRateRegionName,
     regex:
-      /^(?!.*(?:剩|期)).*(?:(?<!\d)0(\.[0-5]|[*×✕✖⨯⨉x倍]))|(?:[*×✕✖⨯⨉x]0)|^(?!.*(?:客户端|软件)).*下载|低倍|免费|(?<![A-Za-z])free(?![A-Za-z])/i,
+      /^(?!.*(?:剩|期)).*(?:(?<![\d.])0(\.[0-5]|[*×✕✖⨯⨉x倍]))|(?:[*×✕✖⨯⨉x]0)|^(?!.*(?:客户端|软件)).*下载|低倍|免费|(?<![A-Za-z])free(?![A-Za-z])/i,
     icon: `${iconBaseUrl}Available.svg`,
   },
   {
@@ -819,7 +819,7 @@ function buildFunctionalGroups(filteredProxies, generatedRegionGroups, customize
 
 // ---dns和hosts相关处理---
 
-// 常见的公共 DNS，用于过滤订阅中的公共 DNS（按服务商分组，含 IP 与域名关键词）
+// 常见的公共 DNS，用于过滤订阅中的公共 DNS
 const commonDnsList = [
   // ==================== 国内 ====================
 
