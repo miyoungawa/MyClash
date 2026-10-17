@@ -3,7 +3,7 @@
 
 基于 [mihomo](https://github.com/MetaCubeX/mihomo/tree/Alpha) 的配置与覆写脚本，提供全量版和精简版。
 
-本仓库 fork 自 [AIsouler/MyClash](https://github.com/AIsouler/MyClash)，其实原因是想和自己的女朋友sakiki打Discord电话，而原本的MyClash并没有Discord的分流功能，所以在其上追加 **Discord 分流支持**、**自动化构建**与**测试套件**。上游文件保持原样，改动集中在 `overlay/`、`tools/`、`Test/`、`.github/`，以及自动生成的 `dist/Script.js`。
+本仓库 fork 自 [AIsouler/MyClash](https://github.com/AIsouler/MyClash)。最初的动机是和女朋友 sakiki 打 Discord 电话，而上游精简版没有 Discord 分流，于是在其基础上补了 **Discord 分流**，随后又陆续追加 **哔哩哔哩分流**、**Apple 分流**、**DNS 策略调整**（国内直连解析器改为 114 DNS 优先）与**地区调整**（移除新加坡、台湾），并加入 **自动化构建**与**测试套件**。上游文件保持原样，改动集中在 `overlay/`、`tools/`、`Test/`、`.github/`、`README.md`，以及自动生成的 `dist/Script.js`。
 
 主要特性：
 
@@ -25,7 +25,7 @@
 
 | 路径                                                     | 说明                                                                          |
 | -------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `dist/Script.js`                                       | **本仓库发布的覆写脚本**：上游最新精简版 + 本仓库补丁（Discord / 地区调整），由 CI 定时构建 |
+| `dist/Script.js`                                       | **本仓库发布的覆写脚本**：上游最新精简版 + 本仓库补丁（Discord / 哔哩哔哩 / Apple / DNS / 默认选中 / 地区调整），由 CI 定时构建 |
 | `Script/Script.js`                                     | 上游精简版脚本快照                                                            |
 | `Script/mihomoScript.js`                               | 上游全量版脚本快照                                                            |
 | `Config/mihomoConfigLite.yaml` / `Config/mihomoConfig.yaml` | 上游配置文件快照（provider 式，独立使用，**不能**挂覆写脚本，见下文） |
@@ -132,13 +132,13 @@ https://raw.githubusercontent.com/miyoungawa/MyClash/main/Script/mihomoScript.js
 
 脚本**不继承订阅的 DNS**，而是重写整套 DNS（这也是要求关闭客户端 DNS 覆写的原因：DNS 配置与路由规则是配套设计的）：
 
-| 字段                        | 取值                                                     | 作用                                    |
-| --------------------------- | -------------------------------------------------------- | --------------------------------------- |
-| `default-nameserver`      | `114.114.114.114`、`tls://223.5.5.5`、`1.12.12.12` | 引导用，解析下面那些 DoH 服务器域名本身 |
-| `proxy-server-nameserver` | `114.114.114.114`、`tls://223.5.5.5`、`doh.pub`    | 解析节点`server` 域名                 |
-| `nameserver`              | Cloudflare / Google DoH，均带`#默认代理`               | 默认解析器，查询经代理，避免 DNS 泄露   |
-| `nameserver-policy`       | `rule-set:cn` → 国内 DNS（`#DIRECT`）               | 国内域名走国内解析                      |
-| `direct-nameserver`       | 国内 DNS                                                 | 直连出口的解析                          |
+| 字段                        | 取值                                                                 | 作用                                    |
+| --------------------------- | -------------------------------------------------------------------- | --------------------------------------- |
+| `default-nameserver`      | `114.114.114.114#DIRECT`、`223.5.5.5#DIRECT`                      | 引导用，解析下面那些 DoH 服务器域名本身 |
+| `proxy-server-nameserver` | `114.114.114.114#DIRECT`、`223.5.5.5#DIRECT`                      | 解析节点`server` 域名                 |
+| `nameserver`              | Cloudflare / Google DoH，均带`#默认代理`                           | 默认解析器，查询经代理，避免 DNS 泄露   |
+| `nameserver-policy`       | `rule-set:cn` / `rule-set:bilibili` → 国内 DNS（`#DIRECT`）      | 国内域名与 B 站域名族走国内解析         |
+| `direct-nameserver`       | `114.114.114.114#DIRECT`、`223.5.5.5#DIRECT`                      | 直连出口的解析                          |
 
 此外固定开启 fake-ip（`198.18.0.1/15`、`2001:2::1/48`）、`cache-algorithm: arc`、`use-hosts`，并把 `rule-set:private`、`rule-set:fakeip_filter`、`rule-set:geolocation-cn` 加入 `fake-ip-filter`。
 
@@ -198,7 +198,7 @@ https://raw.githubusercontent.com/miyoungawa/MyClash/main/Script/mihomoScript.js
 - `Discord` （由 `overlay/discord.js` 注入，仅 `dist/Script.js` 包含；补丁会把它插在基础策略组之后、Google 等宽泛规则之前，避免 Discord 附件域名被 Google 规则提前匹配）
 - `哔哩哔哩` （由 `overlay/bilibili.js` 注入，仅 `dist/Script.js` 包含；规则集来自 MetaCubeX `meta-rules-dat` 的 `geosite/bilibili.mrs`。**规则插入 `prefixRules` 中 `geolocation-cn` 之前**——否则 B 站主站域名会被国内直连规则提前匹配，该组只能接管 `bilibili.tv` / `biliintl.com` 这类 `@!cn` 域名。组内附带「直连」选项且默认选中「直连」，默认行为与上游一致，需要看港澳台等限定内容时在面板里切到对应地区即可）
 - `Apple` （由 `overlay/apple.js` 注入，仅 `dist/Script.js` 包含；对照组上游全量版的 Apple 组，精简版中被移除。规则集：`geosite/apple.mrs`（域名）+ `geoip/apple.mrs`（IP 段，`no-resolve`），两条规则各出现一次。**规则位于分流区**——`prefixRules` 中已有的 `apple_cn`（中国区 Apple 域名）直连规则优先执行，所以中国区 CDN 保持直连，本组只接管其余 Apple 流量。组内附带「直连」选项且默认选中「直连」，默认行为与改动前一致；需要走代理（美区账号 / Apple Intelligence）时在面板切到对应地区即可）
-- DNS 策略 （由 `overlay/dns.js` 注入，仅 `dist/Script.js` 包含。① **国内直连解析器**：`nameserver-policy:cn`（国内域名策略）与 `direct-nameserver`（直连出口）统一为 **`114.114.114.114#DIRECT`** / `223.5.5.5#DIRECT`（114 DNS 优先、阿里 DNS 备选）；`default-nameserver`（引导）与 `proxy-server-nameserver`（解析节点 `server` 域名）独立维护，当前同值（114 / 阿里）。顺序只是配置顺序——内核是**并发查询、取先返回者**，所以"首选"不保证被采用，但抗故障性好（某个解析器不可达时自动用另一个，不会因此断网）。**注意备用的真实适用边界**：只有主解析器完全无响应（超时 / SERVFAIL）时才会采用备用；若主解析器返回了内容（哪怕是一条已失效的 IP），内核会直接使用该结果，不会改用备用，IP 质量只能靠 `tcp-concurrent` 并发连接兜底（前提是返回多条候选）；② **为 B 站域名族补 `nameserver-policy`**（`rule-set:bilibili` → 国内解析器）：国外 DoH 会把 `s1.hdslb.com` 这类域名答成阿里云全球加速段（实测 `155.102.175.x`），从国内直连会超时。刻意的例外：`nameserver` 仍走代理侧 DoH（防 DNS 泄露）、`rule-set:private` 仍为 `system`（局域网域名）、`rule-set:douyin` 保持上游的 `system + 字节 DNS`（抖音 CDN 调度）。②由补丁包装 `main()` 在生成配置后补写，因为 `nameserver-policy` 是上游函数内部就地构造的）
+- DNS 策略 （由 `overlay/dns.js` 注入，仅 `dist/Script.js` 包含。① **国内直连解析器**：`nameserver-policy:cn`（国内域名策略）与 `direct-nameserver`（直连出口）统一为 **`114.114.114.114#DIRECT`** / `223.5.5.5#DIRECT`（114 DNS 优先、阿里 DNS 备选）；`default-nameserver`（引导）与 `proxy-server-nameserver`（解析节点 `server` 域名）独立维护，当前同值（114 / 阿里）。顺序只是配置顺序——内核是**并发查询、取先返回者**，所以"首选"不保证被采用，但抗故障性好（某个解析器不可达时自动用另一个，不会因此断网）。**注意备用的真实适用边界**：只有主解析器完全无响应（超时 / SERVFAIL）时才会采用备用；若主解析器返回了内容（哪怕是一条已失效的 IP），内核会直接使用该结果，不会改用备用，IP 质量只能靠 `tcp-concurrent` 并发连接兜底（前提是返回多条候选）；② **为 B 站域名族补 `nameserver-policy`**（`rule-set:bilibili` → 国内解析器）：国外 DoH 会把 `s1.hdslb.com` 这类域名答成阿里云全球加速段（实测 `155.102.175.x`），从国内直连会超时。刻意的例外：`nameserver` 仍走代理侧 DoH（防 DNS 泄露）、`rule-set:private` 仍为 `system`（局域网域名）、`rule-set:douyin` 保持上游的 `system + 字节 DNS`（抖音 CDN 调度）。该策略由补丁包装 `main()` 在生成配置后补写，因为 `nameserver-policy` 是上游函数内部就地构造的）
 - 默认选中改为 `AI` → 「日本」、`Discord` → 「手动选择」 （由 `overlay/service-defaults.js` 注入，仅 `dist/Script.js` 包含。mihomo 的 `select` 组支持 `default-selected`（源码 `SelectorOption`，官方文档未收录），**仅在客户端没有保存过该组的选择时生效**；在面板里选过之后由 `profile.store-selected` 缓存覆盖。若该名称不在组的 `proxies` 列表中，内核会静默回落到列表第一项，构建脚本会对此做断言）
 - 地区调整 `新加坡` / `台湾` 被移除 （由 `overlay/regions.js` 注入，仅 `dist/Script.js` 包含。脚本内地区表分为 `regionDefinitions`（判定是否地区节点）与 `allRegionDefinitions`（节点匹配与建组）两个数组，增删地区必须同时处理两者，否则会出现「地区组没生成、节点却仍被当作地区节点」的问题，补丁已处理；被移除地区的节点不会被丢弃，而是归入「其他节点」。移除按关键词匹配而非完整名称，以兼容上游改名——上游曾把「台湾省」改名为「台湾」，按旧名移除会静默失效并导致构建断言失败）
 
