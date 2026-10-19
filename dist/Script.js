@@ -144,7 +144,7 @@ const regionDefinitions = [
     name: '美国',
     flag: '🇺🇸',
     regex:
-      /🇺🇸|美国|纽约|洛杉矶|旧金山|芝加哥|休斯顿|迈阿密|西雅图|波士顿|华盛顿|圣何塞|圣地亚哥|(?<![A-Za-z])USA?(?![A-Za-z])|america|united\s*states/i,
+      /🇺🇸|美国|纽约|洛杉矶|旧金山|芝加哥|休斯顿|迈阿密|西雅图|波士顿|华盛顿|圣何塞|(?<![A-Za-z])USA?(?![A-Za-z])|america|united\s*states/i,
     icon: `${iconBaseUrl}America.svg`,
   },
   {
