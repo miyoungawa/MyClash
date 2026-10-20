@@ -1451,7 +1451,7 @@ function main(config) {
 })();
 
 /*
- * MyClash 哔哩哔哩分流补丁
+ * MyClash bilibili 分流补丁
  *
  * 本文件不会修改上游 Script.js。
  * tools/build.mjs 会把本补丁追加到最新版上游脚本末尾。
@@ -1460,7 +1460,7 @@ function main(config) {
  *   生成的规则数组是 [...prefixRules, ...屏蔽国外QUIC, ...分流规则, 兜底规则]，
  *   而 prefixRules 里的 RULE-SET,geolocation-cn,直连 会把 B 站主站域名
  *   （geosite 中归入 cn 的那批）提前匹配成直连。若规则放在分流区，
- *   「哔哩哔哩」组实际只能接管 bilibili.tv / biliintl.com 这类 @!cn 域名。
+ *   「bilibili」组实际只能接管 bilibili.tv / biliintl.com 这类 @!cn 域名。
  *   插到 prefixRules 中 geolocation-cn 之前，该组即可接管全部 B 站流量。
  *
  * 该策略组默认选中「直连」，所以默认行为与改动前一致；
@@ -1469,7 +1469,7 @@ function main(config) {
  * B 站域名族的 DNS 策略不在这里，见 overlay/dns.js（本文件只负责策略组与规则）。
  */
 (() => {
-  const serviceName = '哔哩哔哩';
+  const serviceName = 'bilibili';
 
   // 上游按 ruleOptionsEnable[组名] 决定是否生成该分流组、是否注册其 rule-provider，
   // 新增的组必须在这里打开开关，否则组与 provider 都不会生成。
@@ -1521,6 +1521,9 @@ function main(config) {
  *   - 域名规则：geosite/apple.mrs → 「Apple」组
  *   - IP 规则：geoip/apple.mrs（no-resolve，不做 DNS 解析）→ 「Apple」组
  *
+ * 规则集来源为 appshubcc/bett-rules（MetaCubeX/meta-rules-dat 的 fork）：
+ * 父仓库没有 geoip/apple.mrs，直接引用会 404，内核运行时报 initial rule provider 失败。
+ *
  * 规则顺序说明：prefixRules 中已存在 RULE-SET,apple_cn,直连（中国区 Apple 域名直连），
  * 它优先于本组在分流区的规则，所以中国区 CDN 保持直连，本组只接管其余 Apple 流量。
  *
@@ -1543,13 +1546,13 @@ function main(config) {
     providers: {
       apple: {
         ...ruleProviderCommonDomain,
-        url: 'https://cdn.jsdmirror.com/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/apple.mrs',
+        url: 'https://cdn.jsdmirror.com/gh/appshubcc/bett-rules@meta/geo/geosite/apple.mrs',
         path: './ruleset/apple.mrs',
         'path-in-bundle': 'geo/geosite/apple.mrs',
       },
       apple_ip: {
         ...ruleProviderCommonIpcidr,
-        url: 'https://cdn.jsdmirror.com/gh/MetaCubeX/meta-rules-dat@meta/geo/geoip/apple.mrs',
+        url: 'https://cdn.jsdmirror.com/gh/appshubcc/bett-rules@meta/geo/geoip/apple.mrs',
         path: './ruleset/apple_ip.mrs',
         'path-in-bundle': 'geo/geoip/apple.mrs',
       },
@@ -1621,7 +1624,7 @@ function main(config) {
     if (
       nameserverPolicy &&
       nameserverPolicy['rule-set:cn'] &&
-      ruleOptionsEnable['哔哩哔哩'] &&
+      ruleOptionsEnable['bilibili'] &&
       !nameserverPolicy['rule-set:bilibili']
     ) {
       nameserverPolicy['rule-set:bilibili'] = nameserverPolicy['rule-set:cn'];
