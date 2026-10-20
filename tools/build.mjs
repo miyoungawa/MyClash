@@ -213,15 +213,15 @@ for (const [groupName, target] of Object.entries(expectedDefaultSelected)) {
   );
 }
 
-// 哔哩哔哩断言：规则必须排在 geolocation-cn 之前，
+// bilibili 断言：规则必须排在 geolocation-cn 之前，
 // 否则 B 站主站域名会被国内直连规则提前匹配，该组只能接管到海外域名
-const bilibiliGroup = groups.find((group) => group.name === '哔哩哔哩');
+const bilibiliGroup = groups.find((group) => group.name === 'bilibili');
 
-assert(bilibiliGroup, '没有生成哔哩哔哩策略组');
-assert(bilibiliGroup.proxies.includes('直连'), '哔哩哔哩策略组缺少「直连」选项');
+assert(bilibiliGroup, '没有生成 bilibili 策略组');
+assert(bilibiliGroup.proxies.includes('直连'), 'bilibili 策略组缺少「直连」选项');
 assert(
   bilibiliGroup['default-selected'] === '直连',
-  `哔哩哔哩的 default-selected 应为「直连」，实际为「${bilibiliGroup['default-selected']}」`,
+  `bilibili 的 default-selected 应为「直连」，实际为「${bilibiliGroup['default-selected']}」`,
 );
 
 assert(providers.bilibili, '没有生成 bilibili Rule Provider');
@@ -230,16 +230,16 @@ assert(
   'bilibili Rule Provider 不是 domain 类型',
 );
 
-const bilibiliRule = 'RULE-SET,bilibili,哔哩哔哩';
+const bilibiliRule = 'RULE-SET,bilibili,bilibili';
 const cnRuleIndex = rules.indexOf('RULE-SET,geolocation-cn,直连');
 
 assert(
   rules.filter((rule) => rule === bilibiliRule).length === 1,
-  `哔哩哔哩规则应出现且仅出现一次：${bilibiliRule}`,
+  `bilibili 规则应出现且仅出现一次：${bilibiliRule}`,
 );
 assert(
   cnRuleIndex === -1 || rules.indexOf(bilibiliRule) < cnRuleIndex,
-  '哔哩哔哩规则必须位于 geolocation-cn（国内直连）之前，否则无法接管 B 站主站流量',
+  'bilibili 规则必须位于 geolocation-cn（国内直连）之前，否则无法接管 B 站主站流量',
 );
 
 // Apple 断言：默认选中「直连」、domain + ipcidr 双 provider 齐全、
@@ -385,6 +385,51 @@ const groupNames = groups.map((group) => group.name);
 assert(
   new Set(groupNames).size === groupNames.length,
   '生成结果中存在重复策略组',
+);
+
+// 规则集 URL 探活：上游/镜像仓库调整路径时，provider 会静默 404，
+// 内核只在运行时打一条 initial rule provider error，构建期发现不了。
+// 这里只把 404 判为失败（确定性的路径错误），网络错误与 5xx 仅告警，避免 CDN 抖动阻塞发布。
+const providerUrls = [
+  ...new Set(
+    Object.values(providers)
+      .map((provider) => provider.url)
+      .filter((url) => typeof url === 'string' && url.startsWith('http')),
+  ),
+];
+
+const missingProviderUrls = [];
+
+await Promise.all(
+  providerUrls.map(async (url) => {
+    try {
+      const providerResponse = await fetch(url, {
+        redirect: 'follow',
+        signal: AbortSignal.timeout(15000),
+        headers: {
+          'User-Agent': 'MyClash-Build-Check',
+          Range: 'bytes=0-0',
+        },
+      });
+
+      if (providerResponse.status === 404) {
+        missingProviderUrls.push(url);
+      } else if (!providerResponse.ok && providerResponse.status !== 206) {
+        console.warn(
+          `规则集探活返回 HTTP ${providerResponse.status}（忽略）：${url}`,
+        );
+      }
+
+      await providerResponse.body?.cancel?.();
+    } catch (error) {
+      console.warn(`规则集探活失败（忽略）：${url} -> ${error.message}`);
+    }
+  }),
+);
+
+assert(
+  missingProviderUrls.length === 0,
+  `以下 Rule Provider 地址返回 404：\n${missingProviderUrls.join('\n')}`,
 );
 
 // 所有检查通过后才覆盖正式输出文件。

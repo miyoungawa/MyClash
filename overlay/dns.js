@@ -51,7 +51,7 @@
     if (
       nameserverPolicy &&
       nameserverPolicy['rule-set:cn'] &&
-      ruleOptionsEnable['哔哩哔哩'] &&
+      ruleOptionsEnable['bilibili'] &&
       !nameserverPolicy['rule-set:bilibili']
     ) {
       nameserverPolicy['rule-set:bilibili'] = nameserverPolicy['rule-set:cn'];
