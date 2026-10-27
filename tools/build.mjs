@@ -340,24 +340,34 @@ assert(
 
 // 地区调整断言：被移除的地区不应再生成策略组（含其自动选择子组），其节点应归入「其他节点」
 // 按关键词匹配而非完整名称，兼容上游改名（「台湾省」→「台湾」）
-for (const keyword of ['新加坡', '台湾']) {
+for (const keyword of ['新加坡']) {
   assert(
     !groups.some((group) => group.name.includes(keyword)),
     `仍生成了含「${keyword}」的策略组，地区移除未生效`,
   );
 }
 
-for (const kept of ['香港', '日本', '美国']) {
+for (const kept of ['香港', '日本', '美国', '台湾']) {
   assert(
-    groups.some((group) => group.name === kept),
+    groups.some((group) => group.name.includes(kept)),
     `地区「${kept}」不应被移除`,
   );
 }
 
+// 台湾保留断言：节点必须落在台湾地区组内，而不是被归入「其他节点」
+// 组名按关键词找而非精确匹配，兼容上游「台湾省」/「台湾」两种命名
+const taiwanGroup = groups.find((group) => group.name.startsWith('台湾'));
+
+assert(taiwanGroup, '没有生成台湾策略组');
+assert(
+  taiwanGroup.proxies.some((name) => name.includes('台湾测试节点')),
+  '节点「台湾测试节点」没有出现在台湾策略组中',
+);
+
 const otherGroup = groups.find((group) => group.name === '其他节点');
 
 assert(otherGroup, '被移除地区的节点没有归入「其他节点」');
-for (const node of ['新加坡测试节点', '台湾测试节点']) {
+for (const node of ['新加坡测试节点']) {
   assert(
     otherGroup.proxies.some((name) => name.includes(node)),
     `节点「${node}」没有出现在「其他节点」中`,
