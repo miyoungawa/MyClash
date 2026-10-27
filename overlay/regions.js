@@ -34,8 +34,7 @@
     },
   ];
 
-  const shouldRemove = (region) =>
-    removedRegionKeywords.some((keyword) => region.name.includes(keyword));
+  const shouldRemove = (region) => removedRegionKeywords.some((keyword) => region.name.includes(keyword));
 
   // 0) 默认关闭地区自动选择子组：地区组内不再附带「X-自动选择」url-test 组，
   //    组内只保留节点列表（默认选中第一项）。仍可在脚本开关或客户端里重新打开。
