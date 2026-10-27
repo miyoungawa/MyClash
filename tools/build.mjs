@@ -11,7 +11,6 @@ const upstreamUrl =
 
 const overlayPaths = [
   resolve(root, 'overlay', 'discord.js'),
-  resolve(root, 'overlay', 'bilibili.js'),
   resolve(root, 'overlay', 'apple.js'),
   resolve(root, 'overlay', 'dns.js'),
   resolve(root, 'overlay', 'service-defaults.js'),
@@ -213,34 +212,28 @@ for (const [groupName, target] of Object.entries(expectedDefaultSelected)) {
   );
 }
 
-// bilibili 断言：规则必须排在 geolocation-cn 之前，
-// 否则 B 站主站域名会被国内直连规则提前匹配，该组只能接管到海外域名
-const bilibiliGroup = groups.find((group) => group.name === 'bilibili');
+// 普通模式与极简模式均不应生成 bilibili 专用配置。
+const assertNoBilibili = (config) => {
+  assert(!config['proxy-groups'].some((group) => group.name === 'bilibili'), '不应生成 bilibili 策略组');
+  assert(!config['rule-providers'].bilibili, '不应生成 bilibili Rule Provider');
+  assert(
+    !config.rules.some((rule) => typeof rule === 'string' && rule.split(',').includes('bilibili')),
+    '不应保留指向 bilibili 的规则',
+  );
+  assert(
+    config.dns['nameserver-policy']['rule-set:bilibili'] === undefined,
+    '不应保留依赖 bilibili Rule Provider 的 DNS 策略',
+  );
+};
 
-assert(bilibiliGroup, '没有生成 bilibili 策略组');
-assert(bilibiliGroup.proxies.includes('直连'), 'bilibili 策略组缺少「直连」选项');
-assert(
-  bilibiliGroup['default-selected'] === '直连',
-  `bilibili 的 default-selected 应为「直连」，实际为「${bilibiliGroup['default-selected']}」`,
-);
-
-assert(providers.bilibili, '没有生成 bilibili Rule Provider');
-assert(
-  providers.bilibili.behavior === 'domain',
-  'bilibili Rule Provider 不是 domain 类型',
-);
-
-const bilibiliRule = 'RULE-SET,bilibili,bilibili';
-const cnRuleIndex = rules.indexOf('RULE-SET,geolocation-cn,直连');
-
-assert(
-  rules.filter((rule) => rule === bilibiliRule).length === 1,
-  `bilibili 规则应出现且仅出现一次：${bilibiliRule}`,
-);
-assert(
-  cnRuleIndex === -1 || rules.indexOf(bilibiliRule) < cnRuleIndex,
-  'bilibili 规则必须位于 geolocation-cn（国内直连）之前，否则无法接管 B 站主站流量',
-);
+assertNoBilibili(output);
+const originalMinimalMode = ruleOptionsEnable.极简模式;
+try {
+  ruleOptionsEnable.极简模式 = true;
+  assertNoBilibili(main(sampleConfig));
+} finally {
+  ruleOptionsEnable.极简模式 = originalMinimalMode;
+}
 
 // Apple 断言：默认选中「直连」、domain + ipcidr 双 provider 齐全、
 // 规则各出现一次，且 apple_cn 中国区直连规则保留
@@ -276,23 +269,11 @@ assert(
   '缺少 apple_cn 中国区直连规则（不得被 Apple 组规则取代）',
 );
 
-// 哔哩哔哩 DNS 加固断言：B 站域名必须走国内解析器，
-// 否则国外 DoH 会把它答成海外加速地址（从国内直连会超时）
 const nameserverPolicy = output.dns && output.dns['nameserver-policy'];
 
 assert(nameserverPolicy, '生成的配置缺少 dns.nameserver-policy');
-assert(
-  Array.isArray(nameserverPolicy['rule-set:bilibili']) &&
-    nameserverPolicy['rule-set:bilibili'].length > 0,
-  '缺少 rule-set:bilibili 的解析器策略',
-);
-assert(
-  JSON.stringify(nameserverPolicy['rule-set:bilibili']) ===
-    JSON.stringify(nameserverPolicy['rule-set:cn']),
-  'rule-set:bilibili 的解析器应与 rule-set:cn 保持一致',
-);
 
-// 国内直连解析器断言：国内策略（rule-set:cn / rule-set:bilibili）与直连出口（direct-nameserver）
+// 国内直连解析器断言：国内策略（rule-set:cn）与直连出口（direct-nameserver）
 // 必须统一为「114 优先、阿里备用」
 const expectedChinaDns = ['114.114.114.114#DIRECT', '223.5.5.5#DIRECT'];
 // 引导层与节点域名解析（独立维护，当前同值）
@@ -305,12 +286,10 @@ for (const field of ['default-nameserver', 'proxy-server-nameserver']) {
   );
 }
 
-for (const key of ['rule-set:cn', 'rule-set:bilibili']) {
-  assert(
-    JSON.stringify(output.dns['nameserver-policy'][key]) === JSON.stringify(expectedChinaDns),
-    `nameserver-policy 的 ${key} 应为 ${expectedChinaDns.join(' / ')}，实际为 ${JSON.stringify(output.dns['nameserver-policy'][key])}`,
-  );
-}
+assert(
+  JSON.stringify(nameserverPolicy['rule-set:cn']) === JSON.stringify(expectedChinaDns),
+  `nameserver-policy 的 rule-set:cn 应为 ${expectedChinaDns.join(' / ')}，实际为 ${JSON.stringify(nameserverPolicy['rule-set:cn'])}`,
+);
 
 assert(
   JSON.stringify(output.dns['direct-nameserver']) === JSON.stringify(expectedChinaDns),

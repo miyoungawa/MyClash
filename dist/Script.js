@@ -1458,67 +1458,6 @@ function main(config) {
 })();
 
 /*
- * MyClash bilibili 分流补丁
- *
- * 本文件不会修改上游 Script.js。
- * tools/build.mjs 会把本补丁追加到最新版上游脚本末尾。
- *
- * 规则为什么放进 prefixRules（而不是像 Discord 那样交给分流区）：
- *   生成的规则数组是 [...prefixRules, ...屏蔽国外QUIC, ...分流规则, 兜底规则]，
- *   而 prefixRules 里的 RULE-SET,geolocation-cn,直连 会把 B 站主站域名
- *   （geosite 中归入 cn 的那批）提前匹配成直连。若规则放在分流区，
- *   「bilibili」组实际只能接管 bilibili.tv / biliintl.com 这类 @!cn 域名。
- *   插到 prefixRules 中 geolocation-cn 之前，该组即可接管全部 B 站流量。
- *
- * 该策略组默认选中「直连」，所以默认行为与改动前一致；
- * 需要看港澳台等限定内容时，在面板里把该组切到对应地区即可。
- *
- * B 站域名族的 DNS 策略不在这里，见 overlay/dns.js（本文件只负责策略组与规则）。
- */
-(() => {
-  const serviceName = 'bilibili';
-
-  // 上游按 ruleOptionsEnable[组名] 决定是否生成该分流组、是否注册其 rule-provider，
-  // 新增的组必须在这里打开开关，否则组与 provider 都不会生成。
-  ruleOptionsEnable[serviceName] = true;
-
-  const bilibiliProvider = {
-    ...ruleProviderCommonDomain,
-    url: 'https://cdn.jsdmirror.com/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/bilibili.mrs',
-    path: './ruleset/bilibili.mrs',
-    'path-in-bundle': 'geo/geosite/bilibili.mrs',
-  };
-
-  const bilibiliService = {
-    name: serviceName,
-    baseOption: selectBaseOption,
-    // 让组内附带「直连」选项（与 FCM / Microsoft 等组一致）
-    direct: true,
-    defaultSelected: '直连',
-    providers: { bilibili: bilibiliProvider },
-    icon: 'https://fastly.jsdelivr.net/gh/MiToverG422/Qure@master/IconSet/Color/bilibili.png',
-    // 本组的规则由下面的 prefixRules 承载，故不在这里配置 rules，
-    // 避免在分流区再生成一条永远不会命中的重复规则。
-  };
-
-  const existingIndex = serviceConfigs.findIndex((service) => service.name === serviceName);
-
-  if (existingIndex >= 0) {
-    serviceConfigs.splice(existingIndex, 1);
-  }
-
-  serviceConfigs.push(bilibiliService);
-
-  const bilibiliRule = `RULE-SET,bilibili,${serviceName}`;
-
-  if (!prefixRules.includes(bilibiliRule)) {
-    const cnRuleIndex = prefixRules.indexOf('RULE-SET,geolocation-cn,直连');
-
-    prefixRules.splice(cnRuleIndex >= 0 ? cnRuleIndex : 0, 0, bilibiliRule);
-  }
-})();
-
-/*
  * MyClash Apple 分流补丁
  *
  * 本文件不会修改上游 Script.js。
@@ -1585,13 +1524,12 @@ function main(config) {
  * tools/build.mjs 会把本补丁追加到最新版上游脚本末尾。
  *
  * 作用：
- *   1. 统一「国内直连」场景的解析器，优先使用 114 DNS：
+ *   统一「国内直连」场景的解析器，优先使用 114 DNS：
  *      - nameserver-policy:cn（国内域名策略）与 direct-nameserver（直连出口）统一为
  *        「114 优先、阿里 DNS（223.5.5.5）备用」；
  *      - 引导层（default-nameserver）与节点域名解析（proxy-server-nameserver）
  *        分开维护（当前同值：114 / 阿里）；
  *      - 不再使用上游默认的 1.12.12.12、doh.pub。
- *   2. 为 B 站域名族补 nameserver-policy（依赖 bilibili.js 注册的 provider）。
  *
  * 刻意不动的部分：
  *   - nameserver（默认解析器 = 走代理的 Cloudflare / Google DoH）：它是防 DNS 泄露的关键。
@@ -1600,11 +1538,9 @@ function main(config) {
  *
  * 实现说明：defaultDNS / proxyServerDNS 是上层脚本里的 const 数组，
  * 生成的 dns 块直接引用这两个数组对象，所以这里改数组内容即可生效。
- *
- * 本补丁需排在 bilibili.js 之后：第 2 步要用到它设置的 ruleOptionsEnable 开关。
  */
 (() => {
-  // 1) 国内直连解析器：114 DNS 首选、阿里 DNS（223.5.5.5）备选。
+  // 国内直连解析器：114 DNS 首选、阿里 DNS（223.5.5.5）备选。
   //    注意：内核是并发查询、取先返回者，"首选"只是配置顺序，不保证一定用 114；
   //    好处是抗故障——114 不可用时自动采用阿里的结果，不会因此断网。
   //    说明：备用只在主解析器完全无响应（超时 / SERVFAIL）时才会被采用；
@@ -1618,27 +1554,6 @@ function main(config) {
   chinaDNS.splice(0, chinaDNS.length, ...domesticDns);
   defaultDNS.splice(0, defaultDNS.length, ...bootstrapDns);
   proxyServerDNS.splice(0, proxyServerDNS.length, ...bootstrapDns);
-
-  // 2) B 站域名族固定国内解析器（国外 DoH 会把它答成海外加速地址，从国内直连会超时）。
-  //    nameserver-policy 在 buildDnsAndHostsConfig 内部就地构造，加载期无法访问，
-  //    因此在 main() 返回后补写。
-  const originalMain = main;
-
-  main = function (config) {
-    const output = originalMain(config);
-    const nameserverPolicy = output && output.dns && output.dns['nameserver-policy'];
-
-    if (
-      nameserverPolicy &&
-      nameserverPolicy['rule-set:cn'] &&
-      ruleOptionsEnable['bilibili'] &&
-      !nameserverPolicy['rule-set:bilibili']
-    ) {
-      nameserverPolicy['rule-set:bilibili'] = nameserverPolicy['rule-set:cn'];
-    }
-
-    return output;
-  };
 })();
 
 /*
@@ -1732,12 +1647,10 @@ function main(config) {
   ruleOptionsEnable.生成地区自动选择组 = false;
 
   // 1) 移除地区定义（两个数组都要处理）
-  for (let i = regionDefinitions.length - 1; i >= 0; i -= 1) {
-    if (shouldRemove(regionDefinitions[i])) regionDefinitions.splice(i, 1);
-  }
-
-  for (let i = allRegionDefinitions.length - 1; i >= 0; i -= 1) {
-    if (shouldRemove(allRegionDefinitions[i])) allRegionDefinitions.splice(i, 1);
+  for (const definitions of [regionDefinitions, allRegionDefinitions]) {
+    for (let i = definitions.length - 1; i >= 0; i -= 1) {
+      if (shouldRemove(definitions[i])) definitions.splice(i, 1);
+    }
   }
 
   // 2) 清理指向被移除地区的默认选中，避免生成指向不存在策略组的配置

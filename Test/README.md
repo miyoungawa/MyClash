@@ -68,6 +68,7 @@ Test/
 ├── lib/
 │   ├── loader.js           # vm 沙箱加载脚本并暴露 main / 内部函数 / ruleOptionsEnable
 │   ├── harness.js          # 轻量断言与 ✓/✗ 输出、汇总
+│   ├── options.js          # 测试中临时修改并恢复配置开关
 │   ├── fixtures.js         # 模拟订阅配置（典型/精简/空/仅type过滤/全部可过滤/hosts映射/通配映射/链式映射）
 │   ├── scripts.js          # 待测试脚本列表（单一来源，供 run-tests / 两个检查模块共用）
 │   ├── es2020-check.js     # ES2020 兼容性检查逻辑（espree 语法 + 内置 API 静态扫描）

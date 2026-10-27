@@ -42,12 +42,10 @@
   ruleOptionsEnable.生成地区自动选择组 = false;
 
   // 1) 移除地区定义（两个数组都要处理）
-  for (let i = regionDefinitions.length - 1; i >= 0; i -= 1) {
-    if (shouldRemove(regionDefinitions[i])) regionDefinitions.splice(i, 1);
-  }
-
-  for (let i = allRegionDefinitions.length - 1; i >= 0; i -= 1) {
-    if (shouldRemove(allRegionDefinitions[i])) allRegionDefinitions.splice(i, 1);
+  for (const definitions of [regionDefinitions, allRegionDefinitions]) {
+    for (let i = definitions.length - 1; i >= 0; i -= 1) {
+      if (shouldRemove(definitions[i])) definitions.splice(i, 1);
+    }
   }
 
   // 2) 清理指向被移除地区的默认选中，避免生成指向不存在策略组的配置
