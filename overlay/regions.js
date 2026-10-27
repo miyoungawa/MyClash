@@ -5,6 +5,7 @@
  * tools/build.mjs 会把本补丁追加到最新版上游脚本末尾。
  *
  * 作用：增删地区策略组（当前为移除 新加坡、保留 台湾 并在缺失时补齐），
+ *       并默认关闭地区自动选择子组，
  *       被移除地区的节点不会被丢弃，而是归入「其他节点」。
  *
  * 移除与去重都按“关键词”而非“完整名称”匹配：上游曾把「台湾省」改名为「台湾」，
@@ -35,6 +36,10 @@
 
   const shouldRemove = (region) =>
     removedRegionKeywords.some((keyword) => region.name.includes(keyword));
+
+  // 0) 默认关闭地区自动选择子组：地区组内不再附带「X-自动选择」url-test 组，
+  //    组内只保留节点列表（默认选中第一项）。仍可在脚本开关或客户端里重新打开。
+  ruleOptionsEnable.生成地区自动选择组 = false;
 
   // 1) 移除地区定义（两个数组都要处理）
   for (let i = regionDefinitions.length - 1; i >= 0; i -= 1) {

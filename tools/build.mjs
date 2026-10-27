@@ -364,6 +364,13 @@ assert(
   '节点「台湾测试节点」没有出现在台湾策略组中',
 );
 
+// 地区自动选择子组默认关闭断言：补丁把「生成地区自动选择组」改为 false，
+// 不应再生成形如「香港-自动选择」的子组（顶层「自动选择」组名不带该后缀，不受影响）
+assert(
+  !groups.some((group) => group.name.endsWith('-自动选择')),
+  '仍生成了形如「香港-自动选择」的地区自动选择子组，「生成地区自动选择组」默认关闭未生效',
+);
+
 const otherGroup = groups.find((group) => group.name === '其他节点');
 
 assert(otherGroup, '被移除地区的节点没有归入「其他节点」');
