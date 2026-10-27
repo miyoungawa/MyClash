@@ -1670,6 +1670,22 @@ function main(config) {
       service.defaultSelected = target;
     }
   }
+
+  // 地区组仅在有匹配节点时生成，且上游可能命名为「台湾省」。
+  // 根据实际输出设置 Google 默认值，避免无台湾节点时指向不存在的组。
+  const originalMain = main;
+  main = function (config) {
+    const output = originalMain(config);
+    const groups = output && output['proxy-groups'];
+    if (Array.isArray(groups)) {
+      const google = groups.find((group) => group.name === 'Google');
+      const taiwan = allRegionDefinitions.find((region) => region.name.includes('台湾'));
+      if (google && taiwan && google.proxies.includes(taiwan.name)) {
+        google['default-selected'] = taiwan.name;
+      }
+    }
+    return output;
+  };
 })();
 
 /*

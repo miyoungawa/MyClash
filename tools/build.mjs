@@ -359,6 +359,21 @@ for (const kept of ['香港', '日本', '美国', '台湾']) {
 const taiwanGroup = groups.find((group) => group.name.startsWith('台湾'));
 
 assert(taiwanGroup, '没有生成台湾策略组');
+const googleGroup = groups.find((group) => group.name === 'Google');
+assert(googleGroup, '没有生成 Google 策略组');
+assert(
+  googleGroup['default-selected'] === taiwanGroup.name && googleGroup.proxies.includes(taiwanGroup.name),
+  'Google 默认选中应为实际生成的台湾策略组',
+);
+const outputWithoutTaiwan = main({
+  proxies: sampleConfig.proxies.filter((proxy) => !proxy.name.includes('台湾')),
+});
+const googleWithoutTaiwan = outputWithoutTaiwan['proxy-groups'].find((group) => group.name === 'Google');
+assert(
+  googleWithoutTaiwan && (!googleWithoutTaiwan['default-selected'] ||
+    googleWithoutTaiwan.proxies.includes(googleWithoutTaiwan['default-selected'])),
+  '没有台湾节点时 Google 不应默认选中不存在的策略组',
+);
 assert(
   taiwanGroup.proxies.some((name) => name.includes('台湾测试节点')),
   '节点「台湾测试节点」没有出现在台湾策略组中',
