@@ -3,7 +3,7 @@
 
 基于 [mihomo](https://github.com/MetaCubeX/mihomo/tree/Alpha) 的配置与覆写脚本，提供全量版和精简版。
 
-本仓库 fork 自 [AIsouler/MyClash](https://github.com/AIsouler/MyClash)。最初的动机是和女朋友 sakiki 打 Discord 电话，而上游精简版没有 Discord 分流，于是在其基础上补了 **Discord 分流**，随后又陆续追加 **Apple 分流**、**DNS 策略调整**（国内直连解析器改为 114 DNS 优先）与**地区调整**（保留新加坡、台湾，默认关闭地区自动选择子组），并加入 **自动化构建**与**测试套件**。上游文件保持原样，改动集中在 `overlay/`、`tools/`、`Test/`、`.github/`、`README.md`，以及自动生成的 `dist/Script.js`。
+本仓库 fork 自 [AIsouler/MyClash](https://github.com/AIsouler/MyClash)。最初的动机是和女朋友 sakiki 打 Discord 电话，而上游精简版没有 Discord 分流，于是在其基础上补了 **Discord 分流**，随后又陆续追加 **Apple 分流**、**Anthropic 分流**、**DNS 策略调整**（国内直连解析器改为 114 DNS 优先）与**地区调整**（保留新加坡、台湾，默认关闭地区自动选择子组），并加入 **自动化构建**与**测试套件**。上游文件保持原样，改动集中在 `overlay/`、`tools/`、`Test/`、`.github/`、`README.md`，以及自动生成的 `dist/Script.js`。
 
 主要特性：
 
@@ -25,11 +25,11 @@
 
 | 路径                                                     | 说明                                                                          |
 | -------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `dist/Script.js`                                       | **本仓库发布的覆写脚本**：上游最新精简版 + 本仓库补丁（Discord / Apple / DNS / 默认选中 / 地区调整），由 CI 定时构建 |
+| `dist/Script.js`                                       | **本仓库发布的覆写脚本**：上游最新精简版 + 本仓库补丁（Discord / Anthropic / Apple / DNS / 默认选中 / 地区调整），由 CI 定时构建 |
 | `Script/Script.js`                                     | 上游精简版脚本快照                                                            |
 | `Script/mihomoScript.js`                               | 上游全量版脚本快照                                                            |
 | `Config/mihomoConfigLite.yaml` / `Config/mihomoConfig.yaml` | 上游配置文件快照（provider 式，独立使用，**不能**挂覆写脚本，见下文） |
-| `overlay/`                                                                  | 补丁目录：`discord.js`（Discord 分流）、`apple.js`（Apple 分流，域名 + IP 双规则集）、`dns.js`（DNS 策略：统一国内直连解析器）、`service-defaults.js`（默认选中：Google→台湾、AI→日本、Discord→手动选择）、`regions.js`（地区调整：保留新加坡、台湾并在上游缺失时补齐，同时默认关闭地区自动选择组），构建时依次追加到上游脚本末尾 |
+| `overlay/`                                                                  | 补丁目录：`discord.js`（Discord 分流）、`apple.js`（Apple 分流，域名 + IP 双规则集）、`dns.js`（DNS 策略：统一国内直连解析器）、`service-defaults.js`（默认选中：Google→台湾、AI→日本、Discord→手动选择）、`anthropic.js`（Anthropic 分流：anthropic 规则集，规则置于 AI 之前）、`regions.js`（地区调整：保留新加坡、台湾并在上游缺失时补齐，同时默认关闭地区自动选择组），构建时依次追加到上游脚本末尾 |
 | `tools/build.mjs`                                      | 构建脚本：下载上游脚本 → 追加补丁 → 沙箱自检 → 写出`dist/Script.js`      |
 | `Test/`                                                | 覆写脚本测试套件（单元 / 集成 / ES2020 兼容性 / QuickJS 引擎验证）            |
 | `.github/workflows/`                                   | 定时构建与格式检查                                                            |
@@ -196,6 +196,7 @@ https://raw.githubusercontent.com/miyoungawa/MyClash/main/Script/mihomoScript.js
 **本仓库追加**
 
 - `Discord` （由 `overlay/discord.js` 注入，仅 `dist/Script.js` 包含；补丁会把它插在基础策略组之后、Google 等宽泛规则之前，避免 Discord 附件域名被 Google 规则提前匹配）
+- `Anthropic` （由 `overlay/anthropic.js` 注入，仅 `dist/Script.js` 包含；规则集为 `geosite/anthropic.mrs`，覆盖 `claude.ai` / `claude.com` / `anthropic.com` 及 CDN、Claude Code 遥测域名。**规则置于 AI 之前**——上游 AI 组使用的 `category-ai-!cn` 已 `include:anthropic`，若 AI 规则先执行，本组永远无法命中；其余 AI 服务仍由 AI 组接管。默认选中「家宽节点」（住宅/原生 IP 组，由上游 `生成家宽节点组` 生成）；没有家宽节点时不写入该默认值）
 - `Apple` （由 `overlay/apple.js` 注入，仅 `dist/Script.js` 包含；对照组上游全量版的 Apple 组，精简版中被移除。规则集取自 `appshubcc/bett-rules`（`meta-rules-dat` 的 fork，父仓库没有 `geoip/apple.mrs`）：`geosite/apple.mrs`（域名）+ `geoip/apple.mrs`（IP 段，`no-resolve`），两条规则各出现一次。**规则位于分流区**——`prefixRules` 中已有的 `apple_cn`（中国区 Apple 域名）直连规则优先执行，所以中国区 CDN 保持直连，本组只接管其余 Apple 流量。组内附带「直连」选项且默认选中「直连」，默认行为与改动前一致；需要走代理（美区账号 / Apple Intelligence）时在面板切到对应地区即可）
 - DNS 策略 （由 `overlay/dns.js` 注入，仅 `dist/Script.js` 包含。**国内直连解析器**：`nameserver-policy:cn`（国内域名策略）与 `direct-nameserver`（直连出口）统一为 **`114.114.114.114#DIRECT`** / `223.5.5.5#DIRECT`（114 DNS 优先、阿里 DNS 备选）；`default-nameserver`（引导）与 `proxy-server-nameserver`（解析节点 `server` 域名）独立维护，当前同值（114 / 阿里）。顺序只是配置顺序——内核是**并发查询、取先返回者**，所以"首选"不保证被采用，但抗故障性好（某个解析器不可达时自动用另一个，不会因此断网）。**注意备用的真实适用边界**：只有主解析器完全无响应（超时 / SERVFAIL）时才会采用备用；若主解析器返回了内容（哪怕是一条已失效的 IP），内核会直接使用该结果，不会改用备用，IP 质量只能靠 `tcp-concurrent` 并发连接兜底（前提是返回多条候选）。刻意的例外：`nameserver` 仍走代理侧 DoH（防 DNS 泄露）、`rule-set:private` 仍为 `system`（局域网域名）、`rule-set:douyin` 保持上游的 `system + 字节 DNS`（抖音 CDN 调度））
 - 默认选中改为 `Google` → 「台湾」、`AI` → 「日本」、`Discord` → 「手动选择」 （由 `overlay/service-defaults.js` 注入，仅 `dist/Script.js` 包含。mihomo 的 `select` 组支持 `default-selected`（源码 `SelectorOption`，官方文档未收录），**仅在客户端没有保存过该组的选择时生效**；在面板里选过之后由 `profile.store-selected` 缓存覆盖。Google 使用实际生成的台湾地区组名（兼容「台湾省」）；没有台湾节点时保留原有默认行为。若其他默认名称不在组的 `proxies` 列表中，内核会静默回落到列表第一项，构建脚本会对此做断言）
@@ -217,6 +218,7 @@ https://raw.githubusercontent.com/miyoungawa/MyClash/main/Script/mihomoScript.js
 - `台湾` （上游更名自「台湾省」，全量版与精简版均已内置；`dist/Script.js` 同样保留，由 `overlay/regions.js` 兜底：上游缺失该地区时自动补回）
 - `低倍率节点`
 - `高倍率节点`
+- `家宽节点` （按节点名匹配 `家宽` / `住宅` / `原生 IP` / `家庭宽带` / `ISP` / `RES` / `residential`，由上游 `生成家宽节点组` 开关控制；`Anthropic` 组默认选中该组）
 - `其他节点`
 
 倍率识别说明：脚本**按节点名称正则匹配**倍率（并非读取倍率字段），默认将名称含 `2` 以上倍率标记的节点归入高倍率组，将 `0.x`、`0倍`、`免费`、`free`、`低倍`，以及名称含“下载”（不含“客户端/软件”）的节点归入低倍率组。因此需要机场在节点名中带上倍率信息才能生效。
@@ -257,8 +259,8 @@ https://raw.githubusercontent.com/miyoungawa/MyClash/main/Script/mihomoScript.js
 
 1. 下载上游精简版 `Script.js`（`AIsouler/MyClash` main 分支）
 2. 校验上游关键结构标记（`ruleOptionsEnable`、`baseGroups`、`serviceConfigs`、`function main`），结构变化则中止，不发布错误脚本
-3. 在脚本末尾依次追加 [overlay/](./overlay) 下的补丁（`discord.js`、`apple.js`、`dns.js`、`service-defaults.js`、`regions.js`，数组顺序即执行顺序）
-4. 在 Node `vm` 沙箱中实际执行一次 `main(示例配置)` 做断言：Discord 策略组与规则是否齐全、其规则是否位于 Google 规则之前、Apple 策略组与 domain + ipcidr 双 provider 是否齐全、其默认选中是否为「直连」且该名称确实在组内 `proxies` 中、`RULE-SET,apple,Apple` 与 `RULE-SET,apple_ip,Apple,no-resolve` 是否各出现一次、`apple_cn` 中国区直连规则是否保留、`nameserver-policy` 的 `rule-set:cn` 与 `direct-nameserver` 是否已统一为「114 + 阿里」且 114 位于首位、`default-nameserver` / `proxy-server-nameserver` 是否同为纯 IP 解析器（独立维护、当前同值）、`nameserver` 是否仍保留代理出口、`rule-set:private` 是否仍为 `system`、`rule-set:douyin` 是否仍存在（后三条用于防止补丁改过头）、Google、AI 与 Discord 的 `default-selected` 是否为台湾地区组、「日本」、「手动选择」且该名称确实存在于对应组的 `proxies` 中、没有台湾节点时 Google 是否保留有效的默认行为、香港 / 日本 / 美国 / 新加坡 / 台湾是否均已生成、台湾与新加坡节点是否分别落在对应地区组内、未匹配地区的节点是否归入「其他节点」、是否已无`X-自动选择`地区自动选择子组、所有 `RULE-SET` 引用是否有对应 provider、策略组名是否重复、所有 rule-provider 的 URL 是否可用（404 判定失败，网络错误仅告警）
+3. 在脚本末尾依次追加 [overlay/](./overlay) 下的补丁（`discord.js`、`apple.js`、`dns.js`、`service-defaults.js`、`anthropic.js`、`regions.js`，数组顺序即执行顺序）
+4. 在 Node `vm` 沙箱中实际执行一次 `main(示例配置)` 做断言：Discord 策略组与规则是否齐全、其规则是否位于 Google 规则之前、Anthropic 策略组与 anthropic provider 是否齐全、其规则是否仅出现一次且位于 AI 规则之前、其默认选中是否为「家宽节点」且存在于组内 `proxies` 中、Apple 策略组与 domain + ipcidr 双 provider 是否齐全、其默认选中是否为「直连」且该名称确实在组内 `proxies` 中、`RULE-SET,apple,Apple` 与 `RULE-SET,apple_ip,Apple,no-resolve` 是否各出现一次、`apple_cn` 中国区直连规则是否保留、`nameserver-policy` 的 `rule-set:cn` 与 `direct-nameserver` 是否已统一为「114 + 阿里」且 114 位于首位、`default-nameserver` / `proxy-server-nameserver` 是否同为纯 IP 解析器（独立维护、当前同值）、`nameserver` 是否仍保留代理出口、`rule-set:private` 是否仍为 `system`、`rule-set:douyin` 是否仍存在（后三条用于防止补丁改过头）、Google、AI 与 Discord 的 `default-selected` 是否为台湾地区组、「日本」、「手动选择」且该名称确实存在于对应组的 `proxies` 中、没有台湾节点时 Google 是否保留有效的默认行为、香港 / 日本 / 美国 / 新加坡 / 台湾是否均已生成、台湾与新加坡节点是否分别落在对应地区组内、未匹配地区的节点是否归入「其他节点」、是否已无`X-自动选择`地区自动选择子组、所有 `RULE-SET` 引用是否有对应 provider、策略组名是否重复、所有 rule-provider 的 URL 是否可用（404 判定失败，网络错误仅告警）
 5. 全部通过后才覆盖 `dist/Script.js`
 
 `.github/workflows/update-script.yml` 每 6 小时检查一次上游变化，也可手动触发；`overlay/`、`tools/`、workflow 自身有改动时会立即重建。

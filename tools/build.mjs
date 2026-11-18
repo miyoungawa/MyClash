@@ -14,6 +14,7 @@ const overlayPaths = [
   resolve(root, 'overlay', 'apple.js'),
   resolve(root, 'overlay', 'dns.js'),
   resolve(root, 'overlay', 'service-defaults.js'),
+  resolve(root, 'overlay', 'anthropic.js'),
   resolve(root, 'overlay', 'regions.js'),
 ];
 const outputPath = resolve(root, 'dist', 'Script.js');
@@ -93,6 +94,10 @@ if (ruleOptionsEnable.Discord !== true) {
   throw new Error('Discord 开关没有成功启用');
 }
 
+if (ruleOptionsEnable.Anthropic !== true) {
+  throw new Error('Anthropic 开关没有成功启用');
+}
+
 const sampleConfig = {
   proxies: [
     {
@@ -139,6 +144,14 @@ const sampleConfig = {
       name: '未知地区测试节点',
       type: 'ss',
       server: 'other.example.com',
+      port: 443,
+      cipher: 'aes-256-gcm',
+      password: 'test',
+    },
+    {
+      name: '家宽测试节点',
+      type: 'ss',
+      server: 'home.example.com',
       port: 443,
       cipher: 'aes-256-gcm',
       password: 'test',
@@ -197,6 +210,38 @@ assert(
   googleRuleIndex === -1 ||
     discordRuleIndex < googleRuleIndex,
   'Discord 规则必须位于 Google 规则之前',
+);
+
+// Anthropic 断言：独立策略组、anthropic provider 与规则齐全，
+// 且规则必须先于 AI —— 上游 AI 的 category-ai-!cn 已 include:anthropic
+const anthropicGroup = groups.find((group) => group.name === 'Anthropic');
+
+assert(anthropicGroup, '没有生成 Anthropic 策略组');
+assert(providers.anthropic, '没有生成 anthropic Rule Provider');
+assert(
+  providers.anthropic.behavior === 'domain',
+  'anthropic Rule Provider 不是 domain 类型',
+);
+
+const anthropicRule = 'RULE-SET,anthropic,Anthropic';
+
+assert(
+  rules.filter((rule) => rule === anthropicRule).length === 1,
+  `Anthropic 规则应出现且仅出现一次：${anthropicRule}`,
+);
+
+const anthropicRuleIndex = rules.indexOf(anthropicRule);
+const aiRuleIndex = rules.indexOf('RULE-SET,ai,AI');
+
+assert(
+  aiRuleIndex === -1 || anthropicRuleIndex < aiRuleIndex,
+  'Anthropic 规则必须位于 AI 规则之前，否则会被 AI 组提前匹配',
+);
+
+assert(
+  anthropicGroup['default-selected'] === '家宽节点' &&
+    anthropicGroup.proxies.includes('家宽节点'),
+  `Anthropic 的 default-selected 应为「家宽节点」且存在于 proxies 中，实际为「${anthropicGroup['default-selected']}」`,
 );
 
 // 默认选中断言：default-selected 必须确实存在于该组的 proxies 中，
