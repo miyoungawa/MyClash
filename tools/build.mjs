@@ -135,6 +135,14 @@ const sampleConfig = {
       cipher: 'aes-256-gcm',
       password: 'test',
     },
+    {
+      name: '未知地区测试节点',
+      type: 'ss',
+      server: 'other.example.com',
+      port: 443,
+      cipher: 'aes-256-gcm',
+      password: 'test',
+    },
   ],
 };
 
@@ -317,16 +325,9 @@ assert(
   'rule-set:douyin 应保持上游原样，不应被移除',
 );
 
-// 地区调整断言：被移除的地区不应再生成策略组（含其自动选择子组），其节点应归入「其他节点」
+// 地区调整断言：当前不移除地区，五个地区组都应生成
 // 按关键词匹配而非完整名称，兼容上游改名（「台湾省」→「台湾」）
-for (const keyword of ['新加坡']) {
-  assert(
-    !groups.some((group) => group.name.includes(keyword)),
-    `仍生成了含「${keyword}」的策略组，地区移除未生效`,
-  );
-}
-
-for (const kept of ['香港', '日本', '美国', '台湾']) {
+for (const kept of ['香港', '日本', '美国', '新加坡', '台湾']) {
   assert(
     groups.some((group) => group.name.includes(kept)),
     `地区「${kept}」不应被移除`,
@@ -358,6 +359,15 @@ assert(
   '节点「台湾测试节点」没有出现在台湾策略组中',
 );
 
+// 新加坡恢复断言：节点必须落在新加坡地区组内，而不是被归入「其他节点」
+const singaporeGroup = groups.find((group) => group.name.startsWith('新加坡'));
+
+assert(singaporeGroup, '没有生成新加坡策略组');
+assert(
+  singaporeGroup.proxies.some((name) => name.includes('新加坡测试节点')),
+  '节点「新加坡测试节点」没有出现在新加坡策略组中',
+);
+
 // 地区自动选择子组默认关闭断言：补丁把「生成地区自动选择组」改为 false，
 // 不应再生成形如「香港-自动选择」的子组（顶层「自动选择」组名不带该后缀，不受影响）
 assert(
@@ -367,13 +377,11 @@ assert(
 
 const otherGroup = groups.find((group) => group.name === '其他节点');
 
-assert(otherGroup, '被移除地区的节点没有归入「其他节点」');
-for (const node of ['新加坡测试节点']) {
-  assert(
-    otherGroup.proxies.some((name) => name.includes(node)),
-    `节点「${node}」没有出现在「其他节点」中`,
-  );
-}
+assert(otherGroup, '未匹配到地区的节点没有归入「其他节点」');
+assert(
+  otherGroup.proxies.some((name) => name.includes('未知地区测试节点')),
+  '节点「未知地区测试节点」没有出现在「其他节点」中',
+);
 
 const missingProviders = rules
   .filter(
